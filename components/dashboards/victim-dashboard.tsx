@@ -8,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileText, MapPin, Clock, CheckCircle, AlertCircle, DollarSign } from "lucide-react"
 import { ClaimForm } from "@/components/forms/claim-form"
 import { getUserClaims, getUserProfile } from "@/lib/api"
+import { NavigationArrows } from "@/components/NavigationArrows"
 
 export function VictimDashboard() {
-  const [claims, setClaims] = useState([])
+  const [claims, setClaims] = useState<any[]>([])
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -228,6 +229,8 @@ export function VictimDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      {/* Navigation Arrows */}
+      <NavigationArrows prevPage="/public-dashboard" nextPage="/ngo-dashboard" />
     </div>
   )
 }

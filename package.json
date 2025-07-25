@@ -44,6 +44,9 @@
     "date-fns": "4.1.0",
     "dotenv": "^17.2.0",
     "embla-carousel-react": "latest",
+    "express": "^5.1.0",
+    "firebase": "^12.0.0",
+    "firebase-admin": "^13.4.0",
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
     "mongoose": "^8.16.4",
@@ -62,9 +65,11 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "hardhat": "^2.26.1",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"

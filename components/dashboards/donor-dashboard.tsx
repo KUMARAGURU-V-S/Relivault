@@ -8,6 +8,7 @@ import { Wallet, Heart, Award, TrendingUp, ExternalLink } from "lucide-react"
 import { DonationForm } from "@/components/forms/donation-form"
 import { NFTGallery } from "@/components/nft/nft-gallery"
 import { getDonorStats, getDonorTransactions } from "@/lib/api"
+import { NavigationArrows } from "@/components/NavigationArrows"
 
 export function DonorDashboard() {
   const [stats, setStats] = useState({
@@ -16,7 +17,7 @@ export function DonorDashboard() {
     nftCount: 0,
     impactScore: 0,
   })
-  const [transactions, setTransactions] = useState([])
+  const [transactions, setTransactions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -193,6 +194,8 @@ export function DonorDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      {/* Navigation Arrows */}
+      <NavigationArrows prevPage="/ngo-dashboard" nextPage="/" />
     </div>
   )
 }

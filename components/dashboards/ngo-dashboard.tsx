@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { FileText, CheckCircle, XCircle, Clock, Users, AlertTriangle } from "lucide-react"
 import { getPendingClaims, reviewClaim, getNGOStats } from "@/lib/api"
 import { toast } from "sonner"
+import { NavigationArrows } from "@/components/NavigationArrows"
 
 export function NGODashboard() {
-  const [pendingClaims, setPendingClaims] = useState([])
+  const [pendingClaims, setPendingClaims] = useState<any[]>([])
   const [stats, setStats] = useState({
     totalReviewed: 0,
     approved: 0,
@@ -303,6 +304,8 @@ export function NGODashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      {/* Navigation Arrows */}
+      <NavigationArrows prevPage="/victim-dashboard" nextPage="/donor-dashboard" />
     </div>
   )
 }

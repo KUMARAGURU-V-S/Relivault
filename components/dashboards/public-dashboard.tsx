@@ -20,6 +20,7 @@ import {
 } from "recharts"
 import { TrendingUp, Users, DollarSign, Activity, ExternalLink, MapPin } from "lucide-react"
 import { getPublicStats, getRecentTransactions, getDisasterStats } from "@/lib/api"
+import { NavigationArrows } from "@/components/NavigationArrows"
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
 
@@ -31,8 +32,8 @@ export function PublicDashboard() {
     activeClaims: 0,
     totalDonors: 0,
   })
-  const [recentTx, setRecentTx] = useState([])
-  const [disasterData, setDisasterData] = useState([])
+  const [recentTx, setRecentTx] = useState<any[]>([])
+  const [disasterData, setDisasterData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -175,7 +176,7 @@ export function PublicDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -333,6 +334,8 @@ export function PublicDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      {/* Navigation Arrows */}
+      <NavigationArrows prevPage="/" nextPage="/victim-dashboard" />
     </div>
   )
 }
