@@ -1,4 +1,4 @@
-const admin = require("../config/firebaseAdmin");
+const admin = require("./config/firebaseAdmin");
 
 const authenticate = async (req, res, next) => {
   const token = req.headers.authorization?.split("Bearer ")[1];
