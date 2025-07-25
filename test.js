@@ -1,28 +1,35 @@
-const mongoose = require('mongoose');
-const connectDB = require('./config/database'); // adjust if different path
-const Claim = require('./models/Claim');
+require('dotenv').config();
+const mongoose = require('./config/database'); // assuming your db connect logic is exported from here
 
-const runTest = async () => {
-  await connectDB();
+const User = require('./lib/models/User');
+const Claim = require('./lib/models/Claim');
 
-  const testClaim = new Claim({
-    userId: new mongoose.Types.ObjectId(), // Replace with actual user ID if available
-    disasterType: 'Flood',
-    amount: 50000,
-    status: 'Pending',
-    documents: ['https://example.com/doc1.pdf', 'https://example.com/photo.jpg'],
-    location: 'Chennai, Tamil Nadu',
-    reviewNotes: 'Initial submission by user'
-  });
-
+const test = async () => {
   try {
-    const savedClaim = await testClaim.save();
-    console.log('✅ Claim saved successfully:', savedClaim);
-  } catch (error) {
-    console.error('❌ Error saving claim:', error.message);
+    const user = await User.create({
+      name: "Test User",
+      email: "test@example.com",
+      role: "beneficiary",
+      aadhaar: "123456789012",
+      verified: false
+    });
+
+    const claim = await Claim.create({
+      userId: user._id,
+      disasterType: 'Flood',
+      amount: 5000,
+      status: 'Pending',
+      documents: ['doc1.pdf', 'doc2.pdf'],
+      location: 'Chennai',
+    });
+
+    console.log("User and claim saved successfully");
+    console.log({ user, claim });
+  } catch (err) {
+    console.error(err);
   } finally {
     mongoose.connection.close();
   }
 };
 
-runTest();
+test();
