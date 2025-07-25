@@ -1,4 +1,4 @@
-const admin = require("./config/firebaseAdmin");
+const admin = require("../config/firebaseAdmin");
 
 const authenticate = async (req, res, next) => {
   const token = req.headers.authorization?.split("Bearer ")[1];
@@ -7,8 +7,8 @@ const authenticate = async (req, res, next) => {
 
   try {
     const decoded = await admin.auth().verifyIdToken(token);
-    req.user = decoded;
-    next();
+    req.user = decoded; // Attach user info to the request
+    next(); // Proceed to the next middleware or route handler
   } catch (err) {
     res.status(401).json({ error: "Invalid token" });
   }
