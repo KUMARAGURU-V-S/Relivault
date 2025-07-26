@@ -1,12 +1,12 @@
 async function main() {
-  console.log("🚀 Deploying ReliefFund contract...");
+  const [deployer] = await ethers.getSigners();
+  console.log("Deploying with account:", deployer.address);
 
-  const ReliefFund = await ethers.getContractFactory("EfficientDisasterRelief");
-  const reliefFund = await ReliefFund.deploy();
+  const DisasterRelief = await ethers.getContractFactory("EfficientDisasterRelief");
+  const contract = await DisasterRelief.deploy(deployer.address); // pass initialOwner
 
-  await reliefFund.waitForDeployment(); // ✅ Correct method for ethers v6
-
-  console.log(`✅ EfficientDisasterRelief deployed successfully at: ${await EfficientDisasterRelief.getAddress()}`);
+  await contract.waitForDeployment();
+  console.log("✅ Contract deployed at:", await contract.getAddress());
 }
 
 main().catch((error) => {

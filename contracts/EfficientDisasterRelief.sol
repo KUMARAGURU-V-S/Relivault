@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
-// Import ERC721URIStorage to allow setting metadata links.
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-// Inherit from ERC721URIStorage instead of the base ERC721.
 contract EfficientDisasterRelief is ERC721URIStorage, Ownable, ReentrancyGuard {
     enum ClaimStatus { PENDING, APPROVED, REJECTED, DISBURSED }
 
@@ -30,8 +28,12 @@ contract EfficientDisasterRelief is ERC721URIStorage, Ownable, ReentrancyGuard {
     event ClaimRejected(uint256 indexed claimId);
     event FundsDisbursed(uint256 indexed claimId, address indexed to, uint256 amount);
 
-    // Updated the ERC721 constructor with a name and symbol.
-    constructor() ERC721("Relief Donor", "RDN") {}
+    // --- FIX #1: Update the constructor ---
+    // The constructor now accepts an `initialOwner` address and passes it to the Ownable contract.
+    constructor(address initialOwner)
+        ERC721("Relief Donor", "RDN")
+        Ownable(initialOwner)
+    {}
 
     function donate(string memory ipfsMetadata) external payable {
         require(msg.value > 0, "Donation cannot be zero");
@@ -39,11 +41,9 @@ contract EfficientDisasterRelief is ERC721URIStorage, Ownable, ReentrancyGuard {
         if (msg.value >= MIN_DONATION_FOR_NFT) {
             uint256 tokenId = nextTokenId++;
             _mint(msg.sender, tokenId);
-            // CRITICAL: Use the ipfsMetadata to set the token's link.
             _setTokenURI(tokenId, ipfsMetadata);
             emit Donation(msg.sender, msg.value, tokenId);
         } else {
-            // tokenId is 0 since no NFT was minted for small donations.
             emit Donation(msg.sender, msg.value, 0);
         }
     }
@@ -99,21 +99,7 @@ contract EfficientDisasterRelief is ERC721URIStorage, Ownable, ReentrancyGuard {
         return address(this).balance;
     }
 
-    // --- Required Overrides for ERC721URIStorage ---
-    // The following functions are required by Solidity for ERC721URIStorage to work correctly.
-    function _update(address to, uint256 tokenId, address auth) internal override(ERC721, ERC721URIStorage) returns (address) {
-        return super._update(to, tokenId, auth);
-    }
-
-    function _increaseBalance(address account, uint128 value) internal override(ERC721, ERC721URIStorage) {
-        super._increaseBalance(account, value);
-    }
-
-    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
-        return super.tokenURI(tokenId);
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721URIStorage) returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
+    // --- FIX #2: Remove unnecessary overrides ---
+    // The required override section from the previous version is no longer needed
+    // because the new library handles these functions correctly by default.
 }
