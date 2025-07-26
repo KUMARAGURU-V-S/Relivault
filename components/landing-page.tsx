@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Heart, Users, BarChart3, Wallet, FileCheck, Globe, MessageCircle } from "lucide-react"
+import GetStartedButton from "@/components/Authorize/GetStartedButton"
 
 interface LandingPageProps {
   onShowRoleSelect: () => void
@@ -29,7 +30,7 @@ export function LandingPage({ onShowRoleSelect, onViewPublic, onViewDashboard, u
               {userRole ? (
                 <Button onClick={onViewDashboard}>My Dashboard ({userRole})</Button>
               ) : (
-                <Button onClick={onShowRoleSelect}>Get Started</Button>
+                <GetStartedButton />
               )}
             </nav>
           </div>
