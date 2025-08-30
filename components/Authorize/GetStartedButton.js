@@ -1,11 +1,21 @@
 "use client";
-import React from "react";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import React, { useEffect } from "react";
+import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../firebase";
 import { useRouter } from "next/navigation";
 
-function GetStartedButton() {
+const GetStartedButton = React.memo(function GetStartedButton() {
   const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push("/role-select");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
 
   const handleGetStarted = async () => {
     const provider = new GoogleAuthProvider();
@@ -21,6 +31,6 @@ function GetStartedButton() {
   };
 
   return <button onClick={handleGetStarted}>Get Started</button>;
-}
+});
 
 export default GetStartedButton;
