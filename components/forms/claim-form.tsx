@@ -25,6 +25,9 @@ interface ClaimFormProps {
 export function ClaimForm({ onSuccess }: ClaimFormProps) {
   const [loading, setLoading] = useState(false)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [aadhaarVerified, setAadhaarVerified] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [formData, setFormData] = useState<ClaimFormData>({
     disasterType: "",
     description: "",
@@ -33,6 +36,36 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
     aadharNumber: "",
     documents: [],
   })
+
+  const validateAadhaar = (aadhaar: string) => {
+    const cleanAadhaar = aadhaar.replace(/\s/g, '')
+    return /^\d{12}$/.test(cleanAadhaar)
+  }
+
+  const handleAadhaarVerify = async () => {
+    if (!validateAadhaar(formData.aadharNumber)) {
+      toast.error('Please enter a valid 12-digit Aadhaar number')
+      return
+    }
+    
+    setIsVerifying(true)
+    
+    try {
+      // Simulate verification process
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      setAadhaarVerified(true)
+      setShowSuccessPopup(true)
+      toast.success("Aadhaar verified successfully!")
+      
+      // Hide popup after 3 seconds
+      setTimeout(() => setShowSuccessPopup(false), 3000)
+    } catch (error) {
+      toast.error('Aadhaar verification failed. Please try again.')
+    } finally {
+      setIsVerifying(false)
+    }
+  }
 
   const getLocation = () => {
     if (navigator.geolocation) {
@@ -64,6 +97,18 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check if both Aadhaar verification and geo-location are completed
+    if (!aadhaarVerified) {
+      toast.error('Please verify your Aadhaar number first')
+      return
+    }
+    
+    if (!location) {
+      toast.error('Please capture your geo-location first')
+      return
+    }
+    
     setLoading(true)
 
     try {
@@ -127,6 +172,7 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
         documents: [],
       })
       setLocation(null)
+      setAadhaarVerified(false)
       onSuccess()
     } catch (error: any) {
       toast.error(error?.message || "Failed to submit claim")
@@ -169,25 +215,47 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
             </Select>
           </div>
 
-          {/* Aadhar Number */}
+          {/* Aadhaar Number with Verification */}
           <div>
-            <Label htmlFor="aadharNumber">Aadhar Number</Label>
-            <Input
-              id="aadharNumber"
-              type="text"
-              placeholder="Enter 12-digit Aadhar number"
-              value={formData.aadharNumber}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '').slice(0, 12)
-                setFormData((prev) => ({ ...prev, aadharNumber: value }))
-              }}
-              pattern="[0-9]{12}"
-              maxLength={12}
-              required
-            />
+            <Label htmlFor="aadharNumber">Aadhaar Number *</Label>
+            <div className="flex gap-2">
+              <Input
+                id="aadharNumber"
+                type="text"
+                placeholder="Enter 12-digit Aadhaar number"
+                value={formData.aadharNumber}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 12)
+                  setFormData((prev) => ({ ...prev, aadharNumber: value }))
+                  // Reset verification if user changes the number
+                  if (aadhaarVerified && value !== formData.aadharNumber) {
+                    setAadhaarVerified(false)
+                  }
+                }}
+                pattern="[0-9]{12}"
+                maxLength={12}
+                required
+                disabled={aadhaarVerified}
+                className={aadhaarVerified ? "bg-green-50 border-green-300" : ""}
+              />
+              <Button
+                type="button"
+                onClick={handleAadhaarVerify}
+                disabled={isVerifying || aadhaarVerified || formData.aadharNumber.length !== 12}
+                variant={aadhaarVerified ? "default" : "outline"}
+                className={aadhaarVerified ? "bg-green-500 hover:bg-green-600 text-white" : ""}
+              >
+                {isVerifying ? 'Verifying...' : aadhaarVerified ? 'Verified ✅' : 'Verify'}
+              </Button>
+            </div>
             <p className="text-xs text-gray-500 mt-1">
-              Your Aadhar number will be securely stored on IPFS and CID saved in Firestore
+              Your Aadhaar number will be securely stored on IPFS and CID saved in Firestore
             </p>
+            {aadhaarVerified && (
+              <p className="text-xs text-green-600 mt-1 font-medium">
+                ✅ Aadhaar verification completed
+              </p>
+            )}
           </div>
 
           {/* Description */}
@@ -305,11 +373,50 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
           </div>
 
           {/* Submit */}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={loading || !aadhaarVerified || !location}
+            title={
+              !aadhaarVerified || !location 
+                ? 'Please verify Aadhaar and enable Geo-location to continue'
+                : 'Submit your claim'
+            }
+          >
             {loading ? "Submitting Claim..." : "Submit Relief Claim"}
           </Button>
+          
+          {/* Validation Status */}
+          {(!aadhaarVerified || !location) && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <div className="flex items-center space-x-2 text-sm text-yellow-800">
+                <AlertCircle className="h-4 w-4" />
+                <span>
+                  Please complete: 
+                  {!aadhaarVerified && " Aadhaar verification"}
+                  {!aadhaarVerified && !location && " and"}
+                  {!location && " Geo-location capture"}
+                </span>
+              </div>
+            </div>
+          )}
         </form>
       </CardContent>
+      
+      {/* Aadhaar Verification Success Popup */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm mx-4">
+            <div className="text-center">
+              <div className="text-green-500 text-4xl mb-2">✅</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Aadhaar Verified Successfully
+              </h3>
+              <p className="text-gray-600">You can now proceed with your claim submission.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
