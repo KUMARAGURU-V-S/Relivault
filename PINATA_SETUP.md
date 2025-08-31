@@ -30,6 +30,19 @@ npm run dev
 yarn dev
 ```
 
+## How It Works
+
+The system now uses a **server-side API route** (`/api/ipfs`) to handle IPFS uploads:
+
+1. **Client-side**: Form submits data to the API route
+2. **Server-side**: API route accesses environment variables and uploads to Pinata
+3. **Response**: Returns the real IPFS CID to the client
+
+This approach ensures:
+- ✅ Environment variables are accessible (server-side)
+- ✅ API keys remain secure
+- ✅ Real IPFS uploads work properly
+
 ## What Gets Uploaded to IPFS
 
 ### Aadhar Number Data
@@ -47,11 +60,7 @@ When you submit a claim, the Aadhar number is stored on IPFS with this structure
 ```
 
 ### File Uploads
-Supporting documents are also uploaded to IPFS with metadata including:
-- File name
-- File type
-- File size
-- Upload timestamp
+Supporting documents currently return mock CIDs (file uploads will be implemented in the next update).
 
 ## Verification
 

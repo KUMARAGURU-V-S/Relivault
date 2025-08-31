@@ -2,7 +2,7 @@
 import { db } from "../firebase.js"
 import { collection, addDoc, updateDoc, doc } from "firebase/firestore"
 import { ClaimSubmissionData, CIDData, ClaimResult } from "./types"
-import { saveAadharToIPFS as saveAadharToIPFSReal, uploadFileToPinata } from "./ipfs"
+
 
 export async function getUserRole(uid: string): Promise<string> {
   // Mock implementation - instant response for better UX
@@ -70,26 +70,54 @@ export async function submitClaim(claimData: ClaimSubmissionData): Promise<Claim
 }
 
 export async function uploadToIPFS(file: File): Promise<string> {
-  // Use real IPFS upload via Pinata
-  try {
-    const cid = await uploadFileToPinata(file)
-    console.log("File uploaded to IPFS:", file.name, "CID:", cid)
-    return cid
-  } catch (error) {
-    console.error("Error uploading file to IPFS:", error)
-    throw new Error(`Failed to upload file to IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  }
+  // For now, return a mock CID since file uploads need more complex handling
+  console.log("File upload to IPFS not implemented yet, returning mock CID")
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(`Qm${Math.random().toString(36).substring(2, 15)}`)
+    }, 1000)
+  })
 }
 
 export async function saveAadharToIPFS(aadharNumber: string, userId: string, disasterType?: string, location?: string): Promise<string> {
-  // Use real IPFS upload via Pinata
   try {
-    const cid = await saveAadharToIPFSReal(aadharNumber, userId, disasterType, location)
-    console.log("Aadhar number saved to IPFS with CID:", cid)
-    return cid
+    // Use the API route to upload to IPFS
+    const response = await fetch('/api/ipfs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'aadhar',
+        data: {
+          aadharNumber,
+          userId,
+          disasterType,
+          location
+        }
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || 'Failed to upload to IPFS')
+    }
+
+    const result = await response.json()
+    
+    if (result.success) {
+      console.log("Aadhar number saved to IPFS with CID:", result.cid)
+      return result.cid
+    } else {
+      throw new Error(result.message || 'Failed to upload to IPFS')
+    }
   } catch (error) {
     console.error("Error saving Aadhar to IPFS:", error)
-    throw new Error(`Failed to save Aadhar to IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    if (error instanceof Error) {
+      throw new Error(`Failed to save Aadhar to IPFS: ${error.message}`)
+    } else {
+      throw new Error(`Failed to save Aadhar to IPFS: ${String(error)}`)
+    }
   }
 }
 
