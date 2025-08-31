@@ -1,20 +1,14 @@
 // Mock API functions - In production, these would connect to your backend
 export async function getUserRole(uid: string): Promise<string> {
-  // Mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const roles = ["victim", "donor", "ngo", "admin"]
-      resolve(roles[Math.floor(Math.random() * roles.length)])
-    }, 500)
-  })
+  // Mock implementation - instant response for better UX
+  const roles = ["victim", "donor", "ngo", "admin"]
+  return Promise.resolve(roles[Math.floor(Math.random() * roles.length)])
 }
 
 export async function createUser(userData: any): Promise<void> {
-  // Mock implementation
+  // Mock implementation - instant user creation
   console.log("Creating user:", userData)
-  return new Promise((resolve) => {
-    setTimeout(resolve, 1000)
-  })
+  return Promise.resolve()
 }
 
 export async function getUserClaims(uid: string): Promise<any[]> {
@@ -217,9 +211,8 @@ export async function getNGOStats(uid: string): Promise<any> {
 
 export async function reviewClaim(claimId: string, decision: string, notes: string, reviewerId: string): Promise<void> {
   console.log("Reviewing claim:", { claimId, decision, notes, reviewerId })
-  return new Promise((resolve) => {
-    setTimeout(resolve, 1000)
-  })
+  // Instant claim review for better UX
+  return Promise.resolve()
 }
 
 export async function getAdminStats(): Promise<any> {
@@ -267,9 +260,8 @@ export async function getAllUsers(): Promise<any[]> {
 
 export async function updateUserRole(userId: string, newRole: string): Promise<void> {
   console.log("Updating user role:", { userId, newRole })
-  return new Promise((resolve) => {
-    setTimeout(resolve, 1000)
-  })
+  // Simulate instant role update - in production this would be a real API call
+  return Promise.resolve()
 }
 
 export async function getSystemHealth(): Promise<any> {
