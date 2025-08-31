@@ -1,4 +1,8 @@
 // Mock API functions - In production, these would connect to your backend
+import { db } from "../firebase.js"
+import { collection, addDoc, updateDoc, doc } from "firebase/firestore"
+import { ClaimSubmissionData, CIDData, ClaimResult } from "./types"
+
 export async function getUserRole(uid: string): Promise<string> {
   // Mock implementation - instant response for better UX
   const roles = ["victim", "donor", "ngo", "admin"]
@@ -55,10 +59,12 @@ export async function getUserProfile(uid: string): Promise<any> {
   })
 }
 
-export async function submitClaim(claimData: any): Promise<void> {
+export async function submitClaim(claimData: ClaimSubmissionData): Promise<ClaimResult> {
   console.log("Submitting claim:", claimData)
   return new Promise((resolve) => {
-    setTimeout(resolve, 2000)
+    setTimeout(() => {
+      resolve({ claimId: `claim_${Date.now()}_${Math.random().toString(36).substring(2, 9)}` })
+    }, 2000)
   })
 }
 
@@ -70,6 +76,35 @@ export async function uploadToIPFS(file: File): Promise<string> {
       resolve(`Qm${Math.random().toString(36).substring(2, 15)}`)
     }, 1000)
   })
+}
+
+export async function saveAadharToIPFS(aadharNumber: string): Promise<string> {
+  // Mock IPFS upload for Aadhar number
+  console.log("Saving Aadhar number to IPFS:", aadharNumber)
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // In production, this would actually upload the Aadhar number to IPFS
+      const cid = `Qm${Math.random().toString(36).substring(2, 15)}`
+      console.log(`Aadhar number saved to IPFS with CID: ${cid}`)
+      resolve(cid)
+    }, 1000)
+  })
+}
+
+export async function saveCIDToFirestore(cidData: CIDData): Promise<void> {
+  try {
+    // Save CID to Firestore in a separate collection
+    const cidCollection = collection(db, "ipfs_cids")
+    await addDoc(cidCollection, {
+      ...cidData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })
+    console.log("CID saved to Firestore successfully:", cidData)
+  } catch (error) {
+    console.error("Error saving CID to Firestore:", error)
+    throw new Error("Failed to save CID to Firestore")
+  }
 }
 
 export async function getDonorStats(uid: string): Promise<any> {
