@@ -7,9 +7,10 @@ import { ArrowLeft, Users, Heart, Shield, Settings } from "lucide-react"
 interface RoleSelectorProps {
   onRoleSelect: (role: string) => void
   onBack: () => void
+  disabled?: boolean
 }
 
-export function RoleSelector({ onRoleSelect, onBack }: RoleSelectorProps) {
+export function RoleSelector({ onRoleSelect, onBack, disabled = false }: RoleSelectorProps) {
   const roles = [
     {
       id: "victim",
@@ -82,8 +83,8 @@ export function RoleSelector({ onRoleSelect, onBack }: RoleSelectorProps) {
             return (
               <Card
                 key={role.id}
-                className={`cursor-pointer transition-all duration-200 ${role.bgColor} border-2 hover:border-gray-300`}
-                onClick={() => onRoleSelect(role.id)}
+                className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} transition-all duration-200 ${role.bgColor} border-2 hover:border-gray-300`}
+                onClick={() => !disabled && onRoleSelect(role.id)}
               >
                 <CardHeader>
                   <div className="flex items-center space-x-3">
@@ -103,8 +104,12 @@ export function RoleSelector({ onRoleSelect, onBack }: RoleSelectorProps) {
                       </li>
                     ))}
                   </ul>
-                  <Button className="w-full mt-4 bg-transparent" variant="outline">
-                    Continue as {role.title}
+                  <Button
+                    className="w-full mt-4 bg-transparent"
+                    variant="outline"
+                    disabled={disabled}
+                  >
+                    {disabled ? 'Saving...' : `Continue as ${role.title}`}
                   </Button>
                 </CardContent>
               </Card>

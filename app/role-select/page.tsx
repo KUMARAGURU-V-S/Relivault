@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { RoleSelector } from '@/components/role-selector'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth } from '@/firebase'
@@ -8,42 +8,50 @@ import { updateUserRole } from '@/services/userService'
 import { useRouter } from 'next/navigation'
 
 export default function RoleSelectPage() {
-  const [user] = useAuthState(auth)
+  const [user, loading] = useAuthState(auth)
+  const [saving, setSaving] = useState(false)
   const router = useRouter()
 
   const handleRoleSelect = async (role) => {
-    console.log("Role selected:", role, "User:", user?.email)
+    if (saving) return // Prevent double clicks
     
-    if (user) {
-      try {
+    console.log("Role selected:", role, "User:", user?.email)
+    setSaving(true)
+    
+    try {
+      if (user) {
         console.log("Saving role to Firestore...")
         // Save role to Firestore
         await updateUserRole(user.uid, role)
         console.log("Role saved successfully")
-        
-        // Also save to localStorage for immediate access
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('role', role)
-        }
-        
-        // Redirect to role-specific dashboard
-        router.push(`/${role}`)
-      } catch (error) {
-        console.error('Error saving role:', error)
-        // Fallback to localStorage only
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('role', role)
-          window.location.href = `/${role}`
-        }
       }
-    } else {
-      console.error("No user found when trying to save role")
-      // Fallback behavior
+      
+      // Always save to localStorage as backup
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('role', role)
+      }
+      
+      // Redirect to role-specific dashboard
+      router.push(`/${role}`)
+    } catch (error) {
+      console.error('Error saving role:', error)
+      // Fallback to localStorage and redirect anyway
       if (typeof window !== 'undefined') {
         localStorage.setItem('role', role)
         window.location.href = `/${role}`
       }
+    } finally {
+      setSaving(false)
     }
+  }
+
+  // Show loading state while auth is loading
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div>Loading...</div>
+      </div>
+    )
   }
 
   return (
@@ -52,6 +60,7 @@ export default function RoleSelectPage() {
       onBack={() => {
         router.push('/')
       }}
+      disabled={saving}
     />
   )
 }
