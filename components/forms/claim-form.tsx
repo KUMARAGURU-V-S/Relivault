@@ -70,7 +70,12 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
       // 1. Save Aadhar number to IPFS
       let aadharCID = null
       if (formData.aadharNumber.trim()) {
-        aadharCID = await saveAadharToIPFS(formData.aadharNumber)
+        aadharCID = await saveAadharToIPFS(
+          formData.aadharNumber, 
+          "demo-victim-123", // 🔹 replace with Firebase auth UID later
+          formData.disasterType,
+          formData.location
+        )
         
         // 2. Save Aadhar CID to Firestore in separate collection
         await saveCIDToFirestore({

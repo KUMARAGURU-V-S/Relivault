@@ -1,7 +1,8 @@
-// Mock API functions - In production, these would connect to your backend
+// API functions for the disaster relief system
 import { db } from "../firebase.js"
 import { collection, addDoc, updateDoc, doc } from "firebase/firestore"
 import { ClaimSubmissionData, CIDData, ClaimResult } from "./types"
+import { saveAadharToIPFS as saveAadharToIPFSReal, uploadFileToPinata } from "./ipfs"
 
 export async function getUserRole(uid: string): Promise<string> {
   // Mock implementation
@@ -75,26 +76,27 @@ export async function submitClaim(claimData: ClaimSubmissionData): Promise<Claim
 }
 
 export async function uploadToIPFS(file: File): Promise<string> {
-  // Mock IPFS upload
-  console.log("Uploading to IPFS:", file.name)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(`Qm${Math.random().toString(36).substring(2, 15)}`)
-    }, 1000)
-  })
+  // Use real IPFS upload via Pinata
+  try {
+    const cid = await uploadFileToPinata(file)
+    console.log("File uploaded to IPFS:", file.name, "CID:", cid)
+    return cid
+  } catch (error) {
+    console.error("Error uploading file to IPFS:", error)
+    throw new Error(`Failed to upload file to IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
 }
 
-export async function saveAadharToIPFS(aadharNumber: string): Promise<string> {
-  // Mock IPFS upload for Aadhar number
-  console.log("Saving Aadhar number to IPFS:", aadharNumber)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // In production, this would actually upload the Aadhar number to IPFS
-      const cid = `Qm${Math.random().toString(36).substring(2, 15)}`
-      console.log(`Aadhar number saved to IPFS with CID: ${cid}`)
-      resolve(cid)
-    }, 1000)
-  })
+export async function saveAadharToIPFS(aadharNumber: string, userId: string, disasterType?: string, location?: string): Promise<string> {
+  // Use real IPFS upload via Pinata
+  try {
+    const cid = await saveAadharToIPFSReal(aadharNumber, userId, disasterType, location)
+    console.log("Aadhar number saved to IPFS with CID:", cid)
+    return cid
+  } catch (error) {
+    console.error("Error saving Aadhar to IPFS:", error)
+    throw new Error(`Failed to save Aadhar to IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
 }
 
 export async function saveCIDToFirestore(cidData: CIDData): Promise<void> {

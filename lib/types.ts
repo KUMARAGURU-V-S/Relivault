@@ -32,3 +32,23 @@ export interface CIDData {
 export interface ClaimResult {
   claimId: string
 }
+
+// IPFS related types
+export interface AadharIPFSData {
+  aadharNumber: string
+  userId: string
+  timestamp: string
+  claimType: string
+  disasterType?: string
+  location?: string
+}
+
+export interface IPFSMetadata {
+  name: string
+  description: string
+  image?: string
+  attributes?: Array<{
+    trait_type: string
+    value: string
+  }>
+}
