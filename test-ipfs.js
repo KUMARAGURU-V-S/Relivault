@@ -7,8 +7,8 @@
 console.log('Testing IPFS Integration...\n');
 
 // Simulate environment variables (in real app, these come from .env.local)
-process.env.PINATA_API_KEY = 'test_key';
-process.env.PINATA_SECRET_API_KEY = 'test_secret';
+process.env.NEXT_PUBLIC_PINATA_API_KEY = 'test_key';
+process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY = 'test_secret';
 
 // Test data
 const testAadharData = {

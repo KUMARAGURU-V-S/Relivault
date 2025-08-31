@@ -1,15 +1,15 @@
 // IPFS service for uploading data to Pinata
 // You'll need to set these environment variables:
-// PINATA_API_KEY=your_pinata_api_key
-// PINATA_SECRET_API_KEY=your_pinata_secret_key
+// NEXT_PUBLIC_PINATA_API_KEY=your_pinata_api_key
+// NEXT_PUBLIC_PINATA_SECRET_API_KEY=your_pinata_secret_key
 
 import { IPFSMetadata, AadharIPFSData } from "./types"
 
 export async function uploadToPinata(data: any, metadata?: IPFSMetadata): Promise<string> {
   try {
     // Debug: Check if environment variables are available
-    const apiKey = process.env.PINATA_API_KEY
-    const secretKey = process.env.PINATA_SECRET_API_KEY
+    const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
+    const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY
     
     console.log('Debug - API Key available:', !!apiKey)
     console.log('Debug - Secret Key available:', !!secretKey)
@@ -72,8 +72,8 @@ export async function uploadToPinata(data: any, metadata?: IPFSMetadata): Promis
 export async function uploadFileToPinata(file: File): Promise<string> {
   try {
     // Debug: Check if environment variables are available
-    const apiKey = process.env.PINATA_API_KEY
-    const secretKey = process.env.PINATA_SECRET_API_KEY
+    const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
+    const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY
     
     if (!apiKey || !secretKey) {
       throw new Error('Pinata API keys are not configured. Please check your environment variables.')
