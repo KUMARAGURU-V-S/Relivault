@@ -57,15 +57,23 @@ async function uploadToPinata(data: any, metadata?: IPFSMetadata): Promise<strin
     console.log('Debug - Pinata response status:', response.status)
 
     if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+      let errorDetails: string | object = `HTTP ${response.status}: ${response.statusText}`;
       try {
-        const errorData = await response.json()
-        console.log('Debug - Error response data:', errorData)
-        errorMessage = errorData.error || errorData.message || errorMessage
+        const errorData = await response.json();
+        console.log('Debug - Error response data:', errorData);
+        errorDetails = errorData.error || errorData;
       } catch (parseError) {
-        console.log('Debug - Could not parse error response')
+        console.log('Debug - Could not parse error response as JSON.');
+        try {
+          errorDetails = await response.text();
+          console.log('Debug - Error response as text:', errorDetails);
+        } catch (textError) {
+          console.log('Debug - Could not read error response as text.');
+        }
       }
-      throw new Error(`Pinata upload failed: ${errorMessage}`)
+      // Stringify if it's an object, otherwise use as is.
+      const errorMessage = typeof errorDetails === 'object' ? JSON.stringify(errorDetails) : errorDetails;
+      throw new Error(`Pinata upload failed: ${errorMessage}`);
     }
 
     const result = await response.json()

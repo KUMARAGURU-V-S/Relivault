@@ -106,7 +106,6 @@ contract EfficientDisasterRelief is ERC721URIStorage, Ownable, ReentrancyGuard {
         emit FundsDisbursed(claimId, c.claimant, c.approved);
     }
 
-    // ---- Views ----
     function getClaimIds(address user) external view returns (uint256[] memory) {
         return userClaims[user];
     }
@@ -122,7 +121,6 @@ contract EfficientDisasterRelief is ERC721URIStorage, Ownable, ReentrancyGuard {
         return address(this).balance;
     }
 
-    // Optional: accept plain ETH transfers (not strictly needed but convenient)
     receive() external payable {}
     fallback() external payable {}
 }
