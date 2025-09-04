@@ -22,8 +22,8 @@ interface AadharData {
 async function uploadToPinata(data: any, metadata?: IPFSMetadata): Promise<string> {
   try {
     // Debug: Check if environment variables are available
-    const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
-    const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY
+    const apiKey = process.env.PINATA_API_KEY
+    const secretKey = process.env.PINATA_SECRET_API_KEY
     
     console.log('Debug - API Key available:', !!apiKey)
     console.log('Debug - Secret Key available:', !!secretKey)
