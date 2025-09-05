@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,8 @@ import { submitClaim, uploadToIPFS, saveAadharToIPFS, saveCIDToFirestore } from 
 import { ClaimFormData, ClaimSubmissionData } from "@/lib/types"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
+import { useWeb3 } from "@/contexts/Web3Context"
+import { useReliefContract } from "@/hooks/useReliefContract"
 
 interface ClaimFormProps {
   onSuccess: () => void
@@ -25,7 +27,10 @@ interface ClaimFormProps {
 
 export function ClaimForm({ onSuccess }: ClaimFormProps) {
   const { user } = useAuth()
+  const { isConnected, account } = useWeb3()
+  const { submitClaim: submitToContract, isVerifiedVictim, loading: contractLoading } = useReliefContract()
   const [loading, setLoading] = useState(false)
+  const [isVerified, setIsVerified] = useState<boolean | null>(null)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [aadhaarVerified, setAadhaarVerified] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
@@ -38,6 +43,17 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
     aadharNumber: "",
     documents: [],
   })
+
+  // Check if user is verified victim on the blockchain
+  useEffect(() => {
+    const checkVerification = async () => {
+      if (isConnected && account) {
+        const verified = await isVerifiedVictim()
+        setIsVerified(verified)
+      }
+    }
+    checkVerification()
+  }, [isConnected, account, isVerifiedVictim])
 
   const validateAadhaar = (aadhaar: string) => {
     const cleanAadhaar = aadhaar.replace(/\s/g, '')
@@ -155,6 +171,18 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
       return
     }
 
+    // Check Web3 connection for blockchain submission
+    if (!isConnected) {
+      toast.error('Please connect your MetaMask wallet to submit claims to the blockchain')
+      return
+    }
+
+    // Check if user is verified victim on blockchain
+    if (isVerified === false) {
+      toast.error('Your wallet address is not verified as a victim. Please contact support.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -187,30 +215,91 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
         documentHashes.push(hash)
       }
 
-      // 4. Submit claim
-      const claimData: ClaimSubmissionData = {
-        userId: user.uid, // ✅ Using actual Firebase Auth UID
+      // 4. Create combined IPFS document with all claim data
+      const claimDocument = {
         disasterType: formData.disasterType,
         description: formData.description,
-        requestedAmount: Number.parseFloat(formData.requestedAmount),
         location: formData.location,
         coordinates: location,
         documentHashes,
         aadharCID,
-        status: "pending",
+        timestamp: new Date().toISOString(),
+        submittedBy: account
       }
 
-      const claimResult = await submitClaim(claimData)
+      // Upload claim document to IPFS
+      const claimDocumentBlob = new Blob([JSON.stringify(claimDocument, null, 2)], {
+        type: 'application/json'
+      })
+      const claimDocumentFile = new File([claimDocumentBlob], 'claim-document.json', {
+        type: 'application/json'
+      })
+      const claimDocumentCID = await uploadToIPFS(claimDocumentFile)
 
-      // 5. Update the Aadhar CID record with claim ID if available
-      if (aadharCID && claimResult?.claimId) {
-        await saveCIDToFirestore({
-          type: "aadhar",
-          userId: user.uid, // ✅ Using actual Firebase Auth UID
-          cid: aadharCID,
-          timestamp: new Date().toISOString(),
-          claimId: claimResult.claimId
-        })
+      // 5. Submit to smart contract first (this is the primary record)
+      if (isConnected && account) {
+        toast.loading("Submitting claim to blockchain...")
+        const contractTx = await submitToContract(formData.requestedAmount, claimDocumentCID)
+        toast.dismiss()
+        toast.success("Claim submitted to blockchain successfully!")
+        
+        // Store transaction hash for reference
+        const transactionHash = contractTx.transactionHash
+        
+        // 6. Also submit to traditional database for backup/indexing
+        const claimData: ClaimSubmissionData = {
+          userId: user.uid,
+          disasterType: formData.disasterType,
+          description: formData.description,
+          requestedAmount: Number.parseFloat(formData.requestedAmount),
+          location: formData.location,
+          coordinates: location,
+          documentHashes,
+          aadharCID,
+          claimDocumentCID,
+          transactionHash,
+          walletAddress: account,
+          status: "pending",
+        }
+
+        const claimResult = await submitClaim(claimData)
+
+        // 7. Update the Aadhar CID record with claim ID if available
+        if (aadharCID && claimResult?.claimId) {
+          await saveCIDToFirestore({
+            type: "aadhar",
+            userId: user.uid,
+            cid: aadharCID,
+            timestamp: new Date().toISOString(),
+            claimId: claimResult.claimId
+          })
+        }
+      } else {
+        // Fallback to traditional submission if Web3 not connected
+        const claimData: ClaimSubmissionData = {
+          userId: user.uid,
+          disasterType: formData.disasterType,
+          description: formData.description,
+          requestedAmount: Number.parseFloat(formData.requestedAmount),
+          location: formData.location,
+          coordinates: location,
+          documentHashes,
+          aadharCID,
+          claimDocumentCID,
+          status: "pending",
+        }
+
+        const claimResult = await submitClaim(claimData)
+
+        if (aadharCID && claimResult?.claimId) {
+          await saveCIDToFirestore({
+            type: "aadhar",
+            userId: user.uid,
+            cid: aadharCID,
+            timestamp: new Date().toISOString(),
+            claimId: claimResult.claimId
+          })
+        }
       }
 
       toast.success("✅ Claim submitted successfully!")
@@ -406,18 +495,58 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
             </div>
           </div>
 
+          {/* Web3 Status */}
+          {isConnected && (
+            <div className={`border rounded-lg p-4 ${
+              isVerified === true ? 'bg-green-50 border-green-200' : 
+              isVerified === false ? 'bg-red-50 border-red-200' : 
+              'bg-yellow-50 border-yellow-200'
+            }`}>
+              <div className="flex items-start space-x-2">
+                {isVerified === true ? (
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                ) : isVerified === false ? (
+                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                )}
+                <div className="text-sm">
+                  <p className="font-medium mb-1">
+                    {isVerified === true ? 'Blockchain Verification: Verified ✅' :
+                     isVerified === false ? 'Blockchain Verification: Not Verified ❌' :
+                     'Checking Blockchain Verification...'}
+                  </p>
+                  <p className={
+                    isVerified === true ? 'text-green-800' :
+                    isVerified === false ? 'text-red-800' :
+                    'text-yellow-800'
+                  }>
+                    {isVerified === true ? 
+                      'Your wallet address is verified as a disaster victim on the blockchain. You can submit claims.' :
+                     isVerified === false ?
+                      'Your wallet address is not verified as a victim. Please contact support to get verified.' :
+                      'Checking your verification status on the blockchain...'}
+                  </p>
+                  <p className="text-xs mt-1 text-gray-600">
+                    Connected Wallet: {account?.slice(0, 6)}...{account?.slice(-4)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Info banner */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start space-x-2">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-              <div className="text-sm text-yellow-800">
-                <p className="font-medium mb-1">Important Notes:</p>
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">Blockchain Integration:</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>All information will be verified by our NGO partners</li>
-                  <li>False claims may result in legal action</li>
-                  <li>Documents and Aadhar number will be stored securely on IPFS</li>
-                  <li>Aadhar CID will be stored in Firestore for verification</li>
-                  <li>You'll receive updates via email and SMS</li>
+                  <li>Claims are submitted directly to the blockchain for transparency</li>
+                  <li>Approved funds will be automatically disbursed to your connected wallet</li>
+                  <li>All documents and Aadhar data are stored securely on IPFS</li>
+                  <li>You can track your claim status on the blockchain</li>
+                  <li>Low-risk claims may be auto-approved and disbursed instantly</li>
                 </ul>
               </div>
             </div>
@@ -427,23 +556,28 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || !aadhaarVerified || !location}
+            disabled={loading || contractLoading || !aadhaarVerified || !location || !isConnected || isVerified === false}
             title={
-              !aadhaarVerified || !location
-                ? 'Please verify Aadhaar and enable Geo-location to continue'
-                : 'Submit your claim'
+              !isConnected ? 'Please connect your MetaMask wallet' :
+              isVerified === false ? 'Your wallet is not verified as a victim' :
+              !aadhaarVerified || !location ? 'Please verify Aadhaar and enable Geo-location to continue' :
+              'Submit your claim to the blockchain'
             }
           >
-            {loading ? "Submitting Claim..." : "Submit Relief Claim"}
+            {loading || contractLoading ? "Submitting to Blockchain..." : "Submit Relief Claim to Blockchain"}
           </Button>
 
           {/* Validation Status */}
-          {(!aadhaarVerified || !location) && (
+          {(!aadhaarVerified || !location || !isConnected || isVerified === false) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <div className="flex items-center space-x-2 text-sm text-yellow-800">
                 <AlertCircle className="h-4 w-4" />
                 <span>
                   Please complete:
+                  {!isConnected && " Connect MetaMask wallet"}
+                  {!isConnected && (!aadhaarVerified || !location || isVerified === false) && ","}
+                  {isVerified === false && " Get wallet verified as victim"}
+                  {isVerified === false && (!aadhaarVerified || !location) && ","}
                   {!aadhaarVerified && " Aadhaar verification"}
                   {!aadhaarVerified && !location && " and"}
                   {!location && " Geo-location capture"}

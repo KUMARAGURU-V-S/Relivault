@@ -10,6 +10,7 @@ import { ClaimForm } from "@/components/forms/claim-form"
 import { getUserClaims, getUserProfile } from "@/lib/api"
 import { NavigationArrows } from "@/components/NavigationArrows"
 import { useAuth } from "@/contexts/AuthContext"
+import { MetaMaskConnector } from "@/components/web3/MetaMaskConnector"
 import { toast } from "sonner"
 
 export function VictimDashboard() {
@@ -119,6 +120,9 @@ export function VictimDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* MetaMask Connection - Between Stats and Form */}
+        <MetaMaskConnector />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>

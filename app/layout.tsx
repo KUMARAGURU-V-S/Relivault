@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "sonner"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { Web3Provider } from "@/contexts/Web3Context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -37,8 +38,10 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
-          {children}
-          <Toaster position="top-right" />
+          <Web3Provider>
+            {children}
+            <Toaster position="top-right" />
+          </Web3Provider>
         </AuthProvider>
       </body>
     </html>
