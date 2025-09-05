@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MapPin, Upload, FileText, AlertCircle, CheckCircle } from "lucide-react"
-import { submitClaim, uploadToIPFS, saveAadharToIPFS, saveCIDToFirestore } from "@/lib/api"
+import { submitClaim, uploadToIPFS, saveAadharToIPFS, saveCIDToFirestore, createVerificationRequest } from "@/lib/api"
 import { ClaimFormData, ClaimSubmissionData } from "@/lib/types"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
@@ -47,13 +47,27 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
   // Check if user is verified victim on the blockchain
   useEffect(() => {
     const checkVerification = async () => {
-      if (isConnected && account) {
+      if (isConnected && account && user) {
         const verified = await isVerifiedVictim()
         setIsVerified(verified)
+
+        if (verified === false) {
+          try {
+            await createVerificationRequest({
+              userId: user.uid,
+              walletAddress: account,
+              userName: user.displayName || "Unknown User",
+            });
+            toast.info("Your wallet is not verified. A request has been sent to the administrator.");
+          } catch (error: any) {
+            // Avoid spamming toasts if request already exists or fails
+            console.error("Failed to create verification request:", error.message);
+          }
+        }
       }
     }
     checkVerification()
-  }, [isConnected, account, isVerifiedVictim])
+  }, [isConnected, account, isVerifiedVictim, user])
 
   const validateAadhaar = (aadhaar: string) => {
     const cleanAadhaar = aadhaar.replace(/\s/g, '')
