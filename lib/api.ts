@@ -21,40 +21,6 @@ export async function getUserRole(uid: string): Promise<string> {
   }
 }
 
-export async function createVerificationRequest(data: { userId: string; walletAddress: string; userName: string; }) {
-  const response = await fetch('/api/verification-requests', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to create verification request');
-  }
-  return response.json();
-}
-
-export async function getPendingVerificationRequests() {
-  const response = await fetch('/api/verification-requests');
-  if (!response.ok) {
-    throw new Error('Failed to fetch pending requests');
-  }
-  return response.json();
-}
-
-export async function approveVerificationRequest(requestId: string) {
-  const response = await fetch('/api/verification-requests', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requestId }),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to approve request');
-  }
-  return response.json();
-}
-
 export async function createUser(userData: any): Promise<void> {
   try {
     console.log("Creating user:", userData)
