@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { FileText, CheckCircle, XCircle, Clock, Users, AlertTriangle } from "lucide-react"
-import { getPendingClaims, reviewClaim, getNGOStats } from "@/lib/api"
+import { getPendingClaims, reviewClaim, getNGOStats } from "@/lib/api";
+import { getUserProfile } from "@/services/userService";
 import { toast } from "sonner"
 import { NavigationArrows } from "@/components/NavigationArrows"
 import { useAuth } from "@/contexts/AuthContext"
@@ -21,6 +22,7 @@ export function NGODashboard() {
     rejected: 0,
     pending: 0,
   })
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true)
   const [reviewNotes, setReviewNotes] = useState("")
   const [selectedClaim, setSelectedClaim] = useState<any>(null)
@@ -34,9 +36,14 @@ export function NGODashboard() {
   const loadData = async () => {
     try {
       if (!user?.uid) return
-      const [claimsData, statsData] = await Promise.all([getPendingClaims(), getNGOStats(user.uid)])
+      const [claimsData, statsData, profileData] = await Promise.all([
+        getPendingClaims(), 
+        getNGOStats(user.uid),
+        getUserProfile(user.uid)
+      ]);
       setPendingClaims(claimsData)
       setStats(statsData)
+      setProfile(profileData);
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
@@ -131,6 +138,7 @@ export function NGODashboard() {
             <TabsTrigger value="pending">Pending Claims</TabsTrigger>
             <TabsTrigger value="reviewed">Reviewed Claims</TabsTrigger>
             <TabsTrigger value="guidelines">Review Guidelines</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending">
@@ -307,6 +315,38 @@ export function NGODashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>Your registered details</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {profile && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Name</label>
+                      <p className="text-lg">{(profile as any).displayName}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Username</label>
+                      <p className="text-lg">{(profile as any).username}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <p>{(profile as any).email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Phone</label>
+                      <p>{(profile as any).phoneNumber}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
       {/* Navigation Arrows */}

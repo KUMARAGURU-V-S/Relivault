@@ -54,3 +54,16 @@ export const updateUserRole = async (uid, role) => {
     throw error;
   }
 };
+
+export const updateUserProfile = async (uid, profileData) => {
+  try {
+    const userRef = doc(db, "users", uid);
+    await updateDoc(userRef, {
+      ...profileData,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    throw error;
+  }
+};
