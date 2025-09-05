@@ -31,8 +31,8 @@ export default function RoleSelectPage() {
         localStorage.setItem('role', role)
       }
       
-      // Redirect to role-specific dashboard
-      router.push(`/${role}`)
+      // Redirect to the new signup page
+      router.push(`/signup`);
     } catch (error) {
       console.error('Error saving role:', error)
       // Fallback to localStorage and redirect anyway

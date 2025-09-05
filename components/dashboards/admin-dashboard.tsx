@@ -10,10 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { Shield, Users, Settings, Database, TrendingUp } from "lucide-react"
-import { getAdminStats, getAllUsers, updateUserRole } from "@/lib/api"
+import { getAdminStats, getAllUsers, updateUserRole } from "@/lib/api";
+import { getUserProfile } from "@/services/userService";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner"
 
 export function AdminDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalClaims: 0,
@@ -21,17 +24,24 @@ export function AdminDashboard() {
     systemHealth: 100,
   })
   const [users, setUsers] = useState([])
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadAdminData()
-  }, [])
+  }, [user])
 
   const loadAdminData = async () => {
     try {
-      const [statsData, usersData] = await Promise.all([getAdminStats(), getAllUsers()])
+      if(!user) return;
+      const [statsData, usersData, profileData] = await Promise.all([
+        getAdminStats(), 
+        getAllUsers(),
+        getUserProfile(user.uid)
+      ]);
       setStats(statsData)
       setUsers(usersData)
+      setProfile(profileData);
     } catch (error) {
       console.error("Error loading admin data:", error)
     } finally {
@@ -133,6 +143,7 @@ export function AdminDashboard() {
             <TabsTrigger value="system">System Metrics</TabsTrigger>
             <TabsTrigger value="blockchain">Blockchain Status</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -334,6 +345,38 @@ export function AdminDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>Your registered details</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {profile && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Name</label>
+                      <p className="text-lg">{(profile as any).displayName}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Username</label>
+                      <p className="text-lg">{(profile as any).username}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <p>{(profile as any).email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Phone</label>
+                      <p>{(profile as any).phoneNumber}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>

@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Wallet, Heart, Award, TrendingUp, ExternalLink } from "lucide-react"
 import { DonationForm } from "@/components/forms/donation-form"
 import { NFTGallery } from "@/components/nft/nft-gallery"
-import { getDonorStats, getDonorTransactions } from "@/lib/api"
+import { getDonorStats, getDonorTransactions } from "@/lib/api";
+import { getUserProfile } from "@/services/userService";
 import { NavigationArrows } from "@/components/NavigationArrows"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -20,14 +21,20 @@ export function DonorDashboard() {
     impactScore: 0,
   })
   const [transactions, setTransactions] = useState<any[]>([])
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     // Use actual Firebase Auth UID
     if (user?.uid) {
-      Promise.all([getDonorStats(user.uid), getDonorTransactions(user.uid)]).then(([statsData, transactionsData]) => {
+      Promise.all([
+        getDonorStats(user.uid), 
+        getDonorTransactions(user.uid),
+        getUserProfile(user.uid)
+      ]).then(([statsData, transactionsData, profileData]) => {
         setStats(statsData)
         setTransactions(transactionsData)
+        setProfile(profileData)
         setLoading(false)
       })
     } else {
@@ -96,6 +103,7 @@ export function DonorDashboard() {
             <TabsTrigger value="history">Transaction History</TabsTrigger>
             <TabsTrigger value="nfts">My NFTs</TabsTrigger>
             <TabsTrigger value="impact">Impact Report</TabsTrigger>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="donate">
@@ -197,6 +205,38 @@ export function DonorDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>Your registered details</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {profile && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Name</label>
+                      <p className="text-lg">{(profile as any).displayName}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Username</label>
+                      <p className="text-lg">{(profile as any).username}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Email</label>
+                      <p>{(profile as any).email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Phone</label>
+                      <p>{(profile as any).phoneNumber}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
       {/* Navigation Arrows */}

@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileText, MapPin, Clock, CheckCircle, AlertCircle, DollarSign } from "lucide-react"
 import { ClaimForm } from "@/components/forms/claim-form"
-import { getUserClaims, getUserProfile } from "@/lib/api"
+import { getUserClaims } from "@/lib/api"
+import { getUserProfile } from "@/services/userService";
 import { NavigationArrows } from "@/components/NavigationArrows"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
@@ -228,7 +229,11 @@ export function VictimDashboard() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-gray-500">Name</label>
-                      <p className="text-lg">{(profile as any).name}</p>
+                      <p className="text-lg">{(profile as any).displayName}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Username</label>
+                      <p className="text-lg">{(profile as any).username}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Email</label>
@@ -236,11 +241,7 @@ export function VictimDashboard() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Phone</label>
-                      <p>{(profile as any).phone}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Aadhaar</label>
-                      <p>{(profile as any).aadhaar}</p>
+                      <p>{(profile as any).phoneNumber}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Verification Status</label>
