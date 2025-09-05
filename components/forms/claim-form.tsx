@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { MapPin, Upload, FileText, AlertCircle } from "lucide-react"
+import { MapPin, Upload, FileText, AlertCircle, CheckCircle } from "lucide-react"
 import { submitClaim, uploadToIPFS, saveAadharToIPFS, saveCIDToFirestore } from "@/lib/api"
 import { ClaimFormData, ClaimSubmissionData } from "@/lib/types"
 import { toast } from "sonner"
@@ -28,9 +28,8 @@ interface ClaimFormProps {
 export function ClaimForm({ onSuccess }: ClaimFormProps) {
   const { user } = useAuth()
   const { isConnected, account } = useWeb3()
-  const { submitClaim: submitToContract, isVerifiedVictim, loading: contractLoading } = useReliefContract()
+  const { submitClaim: submitToContract, loading: contractLoading } = useReliefContract()
   const [loading, setLoading] = useState(false)
-  const [isVerified, setIsVerified] = useState<boolean | null>(null)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [aadhaarVerified, setAadhaarVerified] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
@@ -44,16 +43,7 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
     documents: [],
   })
 
-  // Check if user is verified victim on the blockchain
-  useEffect(() => {
-    const checkVerification = async () => {
-      if (isConnected && account) {
-        const verified = await isVerifiedVictim()
-        setIsVerified(verified)
-      }
-    }
-    checkVerification()
-  }, [isConnected, account, isVerifiedVictim])
+
 
   const validateAadhaar = (aadhaar: string) => {
     const cleanAadhaar = aadhaar.replace(/\s/g, '')
@@ -91,6 +81,8 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
       return
     }
 
+
+
     toast.loading("Getting your location...")
     
     navigator.geolocation.getCurrentPosition(
@@ -121,6 +113,7 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
         }
         
         toast.error(errorMessage)
+        console.error('Geolocation error:', error)
       },
       {
         enableHighAccuracy: true,
@@ -174,12 +167,6 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
     // Check Web3 connection for blockchain submission
     if (!isConnected) {
       toast.error('Please connect your MetaMask wallet to submit claims to the blockchain')
-      return
-    }
-
-    // Check if user is verified victim on blockchain
-    if (isVerified === false) {
-      toast.error('Your wallet address is not verified as a victim. Please contact support.')
       return
     }
 
@@ -497,35 +484,15 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
 
           {/* Web3 Status */}
           {isConnected && (
-            <div className={`border rounded-lg p-4 ${
-              isVerified === true ? 'bg-green-50 border-green-200' : 
-              isVerified === false ? 'bg-red-50 border-red-200' : 
-              'bg-yellow-50 border-yellow-200'
-            }`}>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="flex items-start space-x-2">
-                {isVerified === true ? (
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                ) : isVerified === false ? (
-                  <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-                ) : (
-                  <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                )}
+                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
                 <div className="text-sm">
-                  <p className="font-medium mb-1">
-                    {isVerified === true ? 'Blockchain Verification: Verified ✅' :
-                     isVerified === false ? 'Blockchain Verification: Not Verified ❌' :
-                     'Checking Blockchain Verification...'}
+                  <p className="font-medium mb-1 text-green-800">
+                    Wallet Connected ✅
                   </p>
-                  <p className={
-                    isVerified === true ? 'text-green-800' :
-                    isVerified === false ? 'text-red-800' :
-                    'text-yellow-800'
-                  }>
-                    {isVerified === true ? 
-                      'Your wallet address is verified as a disaster victim on the blockchain. You can submit claims.' :
-                     isVerified === false ?
-                      'Your wallet address is not verified as a victim. Please contact support to get verified.' :
-                      'Checking your verification status on the blockchain...'}
+                  <p className="text-green-700">
+                    Your wallet is connected and ready to receive relief funds directly.
                   </p>
                   <p className="text-xs mt-1 text-gray-600">
                     Connected Wallet: {account?.slice(0, 6)}...{account?.slice(-4)}
@@ -556,10 +523,9 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || contractLoading || !aadhaarVerified || !location || !isConnected || isVerified === false}
+            disabled={loading || contractLoading || !aadhaarVerified || !location || !isConnected}
             title={
               !isConnected ? 'Please connect your MetaMask wallet' :
-              isVerified === false ? 'Your wallet is not verified as a victim' :
               !aadhaarVerified || !location ? 'Please verify Aadhaar and enable Geo-location to continue' :
               'Submit your claim to the blockchain'
             }
@@ -568,16 +534,14 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
           </Button>
 
           {/* Validation Status */}
-          {(!aadhaarVerified || !location || !isConnected || isVerified === false) && (
+          {(!aadhaarVerified || !location || !isConnected) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <div className="flex items-center space-x-2 text-sm text-yellow-800">
                 <AlertCircle className="h-4 w-4" />
                 <span>
                   Please complete:
                   {!isConnected && " Connect MetaMask wallet"}
-                  {!isConnected && (!aadhaarVerified || !location || isVerified === false) && ","}
-                  {isVerified === false && " Get wallet verified as victim"}
-                  {isVerified === false && (!aadhaarVerified || !location) && ","}
+                  {!isConnected && (!aadhaarVerified || !location) && ","}
                   {!aadhaarVerified && " Aadhaar verification"}
                   {!aadhaarVerified && !location && " and"}
                   {!location && " Geo-location capture"}

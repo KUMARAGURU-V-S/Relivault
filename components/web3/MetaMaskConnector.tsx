@@ -16,6 +16,7 @@ export function MetaMaskConnector() {
     chainId, 
     connectWallet, 
     disconnectWallet, 
+    switchToAmoyNetwork,
     loading, 
     error 
   } = useWeb3()
@@ -42,11 +43,12 @@ export function MetaMaskConnector() {
       case 80001: return "Polygon Mumbai"
       case 80002: return "Polygon Amoy"
       case 11155111: return "Sepolia Testnet"
+      case 31337: return "Localhost (Hardhat)"
       default: return `Chain ID: ${chainId}`
     }
   }
 
-  const isCorrectNetwork = chainId === 80002 // Polygon Amoy testnet
+  const isCorrectNetwork = chainId === 80002 || chainId === 31337 // Polygon Amoy testnet or localhost
 
   if (!isConnected) {
     return (
@@ -182,13 +184,24 @@ export function MetaMaskConnector() {
 
         {!isCorrectNetwork && (
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-center space-x-2 text-yellow-800">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm font-medium">Network Warning</span>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-2 text-yellow-800">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">Network Warning</span>
+                </div>
+                <p className="text-sm text-yellow-700 mt-1">
+                  You're connected to the wrong network. Please switch to Polygon Amoy testnet to receive relief funds.
+                </p>
+              </div>
+              <Button
+                onClick={switchToAmoyNetwork}
+                size="sm"
+                className="bg-yellow-600 hover:bg-yellow-700 text-white"
+              >
+                Switch Network
+              </Button>
             </div>
-            <p className="text-sm text-yellow-700 mt-1">
-              You're connected to the wrong network. Please switch to Polygon Amoy testnet to receive relief funds.
-            </p>
           </div>
         )}
       </CardContent>

@@ -9,6 +9,7 @@ interface Web3ContextType {
   chainId: number | null
   connectWallet: () => Promise<void>
   disconnectWallet: () => void
+  switchToAmoyNetwork: () => Promise<void>
   loading: boolean
   error: string | null
 }
@@ -52,6 +53,42 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     }
   }
 
+  // Switch to Polygon Amoy testnet
+  const switchToAmoyNetwork = async () => {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x13882' }], // 80002 in hex (Polygon Amoy)
+      })
+    } catch (switchError: any) {
+      // This error code indicates that the chain has not been added to MetaMask
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId: '0x13882',
+                chainName: 'Polygon Amoy Testnet',
+                nativeCurrency: {
+                  name: 'MATIC',
+                  symbol: 'MATIC',
+                  decimals: 18,
+                },
+                rpcUrls: ['https://rpc-amoy.polygon.technology/'],
+                blockExplorerUrls: ['https://amoy.polygonscan.com/'],
+              },
+            ],
+          })
+        } catch (addError) {
+          throw new Error('Failed to add Polygon Amoy network to MetaMask')
+        }
+      } else {
+        throw switchError
+      }
+    }
+  }
+
   // Connect to MetaMask
   const connectWallet = async () => {
     if (!isMetaMaskInstalled()) {
@@ -70,20 +107,32 @@ export function Web3Provider({ children }: Web3ProviderProps) {
 
       if (accounts.length > 0) {
         const account = accounts[0]
+        
+        // Get current chain ID
+        const chainId = await window.ethereum.request({
+          method: 'eth_chainId'
+        })
+        const currentChainId = parseInt(chainId, 16)
+        
+        // If not on Polygon Amoy or localhost, switch to Amoy
+        if (currentChainId !== 80002 && currentChainId !== 31337) {
+          await switchToAmoyNetwork()
+          // Get the chain ID again after switching
+          const newChainId = await window.ethereum.request({
+            method: 'eth_chainId'
+          })
+          setChainId(parseInt(newChainId, 16))
+        } else {
+          setChainId(currentChainId)
+        }
+        
         setAccount(account)
         
         // Get balance
         const balance = await getBalance(account)
         setBalance(balance)
 
-        // Get chain ID
-        const chainId = await window.ethereum.request({
-          method: 'eth_chainId'
-        })
-        setChainId(parseInt(chainId, 16))
-
-        // Store in localStorage
-        localStorage.setItem('web3_account', account)
+        // Don't store in localStorage to prevent auto-connection
       }
     } catch (error: any) {
       console.error('Error connecting to MetaMask:', error)
@@ -99,54 +148,32 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     setBalance('0')
     setChainId(null)
     setError(null)
+    // Clear any stored connection data
     localStorage.removeItem('web3_account')
   }
 
-  // Check for existing connection on load
+  // Don't auto-connect - require manual connection each time
+  // This ensures users connect to the correct network
+
+  // Only listen for events when connected to prevent auto-reconnection
   useEffect(() => {
-    const checkConnection = async () => {
-      if (!isMetaMaskInstalled()) return
-
-      try {
-        const accounts = await window.ethereum.request({
-          method: 'eth_accounts'
-        })
-
-        if (accounts.length > 0) {
-          const account = accounts[0]
-          setAccount(account)
-          
-          const balance = await getBalance(account)
-          setBalance(balance)
-
-          const chainId = await window.ethereum.request({
-            method: 'eth_chainId'
-          })
-          setChainId(parseInt(chainId, 16))
-        }
-      } catch (error) {
-        console.error('Error checking connection:', error)
-      }
-    }
-
-    checkConnection()
-  }, [])
-
-  // Listen for account changes
-  useEffect(() => {
-    if (!isMetaMaskInstalled()) return
+    if (!isMetaMaskInstalled() || !isConnected) return
 
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
         disconnectWallet()
-      } else {
+      } else if (isConnected) {
+        // Only update if we're already connected
         setAccount(accounts[0])
         getBalance(accounts[0]).then(setBalance)
       }
     }
 
     const handleChainChanged = (chainId: string) => {
-      setChainId(parseInt(chainId, 16))
+      if (isConnected) {
+        // Only update if we're already connected
+        setChainId(parseInt(chainId, 16))
+      }
     }
 
     window.ethereum.on('accountsChanged', handleAccountsChanged)
@@ -156,7 +183,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
       window.ethereum.removeListener('accountsChanged', handleAccountsChanged)
       window.ethereum.removeListener('chainChanged', handleChainChanged)
     }
-  }, [])
+  }, [isConnected])
 
   const value: Web3ContextType = {
     account,
@@ -165,6 +192,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     chainId,
     connectWallet,
     disconnectWallet,
+    switchToAmoyNetwork,
     loading,
     error
   }

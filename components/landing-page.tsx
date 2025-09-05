@@ -27,6 +27,9 @@ export function LandingPage({ onShowRoleSelect, onViewPublic, onViewDashboard, u
               <Button variant="ghost" onClick={onViewPublic}>
                 Public Dashboard
               </Button>
+              <Button variant="ghost" onClick={() => window.location.href = '/events'}>
+                Events
+              </Button>
               {userRole ? (
                 <Button onClick={onViewDashboard}>My Dashboard ({userRole})</Button>
               ) : (

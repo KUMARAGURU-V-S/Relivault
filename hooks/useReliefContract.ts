@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { ethers } from 'ethers'
 import { useWeb3 } from '@/contexts/Web3Context'
 
 // Contract ABI (simplified for key functions)
@@ -22,7 +23,6 @@ const RELIEF_CONTRACT_ABI = [
       { "internalType": "enum EfficientDisasterRelief.ClaimStatus", "name": "", "type": "uint8" },
       { "internalType": "string", "name": "", "type": "string" },
       { "internalType": "bool", "name": "", "type": "bool" },
-      { "internalType": "bool", "name": "", "type": "bool" },
       { "internalType": "address", "name": "", "type": "address" },
       { "internalType": "uint32", "name": "", "type": "uint32" }
     ],
@@ -36,13 +36,7 @@ const RELIEF_CONTRACT_ABI = [
     "stateMutability": "view",
     "type": "function"
   },
-  {
-    "inputs": [{ "internalType": "address", "name": "victim", "type": "address" }],
-    "name": "isVerifiedVictim",
-    "outputs": [{ "internalType": "bool", "name": "isVerified", "type": "bool" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
+
   {
     "inputs": [],
     "name": "contractBalance",
@@ -71,8 +65,9 @@ const RELIEF_CONTRACT_ABI = [
   }
 ]
 
-// Contract address (you'll need to update this with your deployed contract address)
-const RELIEF_CONTRACT_ADDRESS = "0x..." // Replace with actual deployed contract address
+// Contract address - Simplified contract without victim verification
+// This is the local hardhat deployment address
+const RELIEF_CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
 
 export interface Claim {
   id: number
@@ -82,7 +77,6 @@ export interface Claim {
   status: number // 0: PENDING, 1: APPROVED, 2: REJECTED, 3: DISBURSED
   docsIpfs: string
   cidValidated: boolean
-  addressVerified: boolean
   ngoVerifier: string
   validationTimestamp: number
 }
@@ -97,15 +91,19 @@ export function useReliefContract() {
   useEffect(() => {
     if (isConnected && window.ethereum) {
       try {
-        const contractInstance = new window.ethereum.Contract(
+        const provider = new ethers.BrowserProvider(window.ethereum)
+        const contractInstance = new ethers.Contract(
+          RELIEF_CONTRACT_ADDRESS,
           RELIEF_CONTRACT_ABI,
-          RELIEF_CONTRACT_ADDRESS
+          provider
         )
         setContract(contractInstance)
       } catch (err) {
         console.error('Error initializing contract:', err)
         setError('Failed to initialize contract')
       }
+    } else {
+      setContract(null)
     }
   }, [isConnected])
 
@@ -119,15 +117,21 @@ export function useReliefContract() {
     setError(null)
 
     try {
-      // Convert amount to wei (assuming amount is in ETH)
-      const amountInWei = window.ethereum.utils.toWei(requestedAmount, 'ether')
+      // Get signer for transactions
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+      const contractWithSigner = contract.connect(signer)
 
-      const transaction = await contract.methods.submitClaim(amountInWei, ipfsCid).send({
-        from: account,
-        gas: 300000 // Adjust gas limit as needed
+      // Convert amount to wei (assuming amount is in ETH)
+      const amountInWei = ethers.parseEther(requestedAmount)
+
+      const transaction = await contractWithSigner.submitClaim(amountInWei, ipfsCid, {
+        gasLimit: 300000 // Adjust gas limit as needed
       })
 
-      return transaction
+      // Wait for transaction to be mined
+      const receipt = await transaction.wait()
+      return receipt
     } catch (err: any) {
       console.error('Error submitting claim:', err)
       setError(err.message || 'Failed to submit claim')
@@ -145,22 +149,21 @@ export function useReliefContract() {
     if (!address) return []
 
     try {
-      const claimIds = await contract.methods.getClaimIds(address).call()
+      const claimIds = await contract.getClaimIds(address)
       const claims: Claim[] = []
 
       for (const claimId of claimIds) {
-        const claimData = await contract.methods.getClaim(claimId).call()
+        const claimData = await contract.getClaim(claimId)
         claims.push({
-          id: parseInt(claimId),
+          id: Number(claimId),
           claimant: claimData[0],
-          requested: window.ethereum.utils.fromWei(claimData[1], 'ether'),
-          approved: window.ethereum.utils.fromWei(claimData[2], 'ether'),
-          status: parseInt(claimData[3]),
+          requested: ethers.formatEther(claimData[1]),
+          approved: ethers.formatEther(claimData[2]),
+          status: Number(claimData[3]),
           docsIpfs: claimData[4],
           cidValidated: claimData[5],
-          addressVerified: claimData[6],
-          ngoVerifier: claimData[7],
-          validationTimestamp: parseInt(claimData[8])
+          ngoVerifier: claimData[6],
+          validationTimestamp: Number(claimData[7])
         })
       }
 
@@ -171,28 +174,15 @@ export function useReliefContract() {
     }
   }
 
-  // Check if user is verified victim
-  const isVerifiedVictim = async (address?: string) => {
-    if (!contract) return false
 
-    const userAddress = address || account
-    if (!userAddress) return false
-
-    try {
-      return await contract.methods.isVerifiedVictim(userAddress).call()
-    } catch (err) {
-      console.error('Error checking verification status:', err)
-      return false
-    }
-  }
 
   // Get contract balance
   const getContractBalance = async () => {
     if (!contract) return '0'
 
     try {
-      const balance = await contract.methods.contractBalance().call()
-      return window.ethereum.utils.fromWei(balance, 'ether')
+      const balance = await contract.contractBalance()
+      return ethers.formatEther(balance)
     } catch (err) {
       console.error('Error getting contract balance:', err)
       return '0'
@@ -214,7 +204,6 @@ export function useReliefContract() {
     contract,
     submitClaim,
     getUserClaims,
-    isVerifiedVictim,
     getContractBalance,
     getStatusText,
     loading,

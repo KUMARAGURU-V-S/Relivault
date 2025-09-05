@@ -17,7 +17,7 @@ describe("Comprehensive Auto-Disbursal Test Suite - Sample", function () {
     beforeEach(async function () {
         [owner, victim1, victim2, victim3, ngo1, ngo2, donor, unverifiedUser] = await ethers.getSigners();
         
-        const EfficientDisasterRelief = await ethers.getContractFactory("EfficientDisasterRelief");
+        const EfficientDisasterRelief = await ethers.getContractFactory("contracts/simplified_smart_contract.sol:EfficientDisasterRelief");
         contract = await EfficientDisasterRelief.deploy();
         await contract.waitForDeployment();
         
