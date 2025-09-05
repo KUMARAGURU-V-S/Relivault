@@ -1,203 +1,99 @@
-// IPFS service for uploading data to Pinata
-// You'll need to set these environment variables:
-// NEXT_PUBLIC_PINATA_API_KEY=your_pinata_api_key
-// NEXT_PUBLIC_PINATA_SECRET_API_KEY=your_pinata_secret_key
+// lib/ipfs.ts - Securely interacts with the backend API for IPFS operations.
 
-import { IPFSMetadata, AadharIPFSData } from "./types"
+import { AadharIPFSData, IPFSMetadata } from "./types";
 
-export async function uploadToPinata(data: any, metadata?: IPFSMetadata): Promise<string> {
+/**
+ * Securely saves Aadhar data to IPFS by sending it to our own backend API.
+ * The backend then communicates with Pinata.
+ * @param aadharNumber The user's Aadhar number.
+ * @param userId The user's ID.
+ * @param disasterType The type of disaster for context.
+ * @param location The location for context.
+ * @returns The IPFS CID (Content Identifier) of the saved data.
+ */
+export async function saveAadharToIPFS(aadharNumber: string, userId: string, disasterType?: string, location?: string): Promise<string> {
   try {
-    // Debug: Check if environment variables are available
-    const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
-    const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY
-    
-    console.log('Debug - API Key available:', !!apiKey)
-    console.log('Debug - Secret Key available:', !!secretKey)
-    
-    if (!apiKey || !secretKey) {
-      throw new Error('Pinata API keys are not configured. Please check your environment variables.')
-    }
-
-    // Prepare the data for IPFS
-    const ipfsData = {
-      pinataMetadata: metadata || {
-        name: "Disaster Relief Data",
-        description: "Data uploaded for disaster relief claim"
-      },
-      pinataContent: data
-    }
-
-    console.log('Debug - Uploading data to Pinata:', ipfsData)
-
-    // Upload to Pinata
-    const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+    // This fetch call goes to our OWN backend API route (/api/ipfs)
+    const response = await fetch('/api/ipfs', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'pinata_api_key': apiKey,
-        'pinata_secret_api_key': secretKey
       },
-      body: JSON.stringify(ipfsData)
-    })
+      body: JSON.stringify({
+        type: 'aadhar',
+        data: { aadharNumber, userId, disasterType, location },
+      }),
+    });
 
-    console.log('Debug - Pinata response status:', response.status)
-    console.log('Debug - Pinata response headers:', Object.fromEntries(response.headers.entries()))
+    const result = await response.json();
 
-    if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-      try {
-        const errorData = await response.json()
-        console.log('Debug - Error response data:', errorData)
-        errorMessage = errorData.error || errorData.message || errorMessage
-      } catch (parseError) {
-        console.log('Debug - Could not parse error response')
-      }
-      throw new Error(`Pinata upload failed: ${errorMessage}`)
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Failed to save Aadhar data to IPFS via the backend.');
     }
 
-    const result = await response.json()
-    console.log('Successfully uploaded to IPFS:', result)
-    
-    return result.IpfsHash // This is the CID
+    console.log(`Aadhar number securely saved to IPFS with CID: ${result.cid}`);
+    return result.cid;
+
   } catch (error) {
-    console.error('Error uploading to IPFS:', error)
+    console.error('Error saving Aadhar to IPFS:', error);
+    // Re-throw the error to be caught by the calling component (e.g., claim-form)
     if (error instanceof Error) {
-      throw new Error(`Failed to upload to IPFS: ${error.message}`)
+      throw new Error(`Failed to save Aadhar to IPFS: ${error.message}`);
     } else {
-      throw new Error(`Failed to upload to IPFS: ${String(error)}`)
+      throw new Error(`Failed to save Aadhar to IPFS: ${String(error)}`);
     }
   }
 }
 
+/**
+ * NOTE: Direct file upload to IPFS from the client is insecure.
+ * This function needs to be refactored to send the file to our backend for secure processing.
+ * For now, this functionality is disabled in the claim form.
+ */
 export async function uploadFileToPinata(file: File): Promise<string> {
+  console.error("INSECURE FUNCTION CALLED: uploadFileToPinata. This needs to be refactored.");
+  throw new Error("Direct file upload is disabled for security reasons. Please implement a backend route for file uploads.");
+  
+  // The original insecure code is left here for reference during refactoring,
+  // but it will not be executed.
+  /*
   try {
-    // Debug: Check if environment variables are available
-    const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY
-    const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY
+    const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY;
+    const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY;
     
     if (!apiKey || !secretKey) {
-      throw new Error('Pinata API keys are not configured. Please check your environment variables.')
+      throw new Error('Pinata API keys are not configured for client-side upload.');
     }
 
-    // Create FormData for file upload
-    const formData = new FormData()
-    formData.append('file', file)
+    const formData = new FormData();
+    formData.append('file', file);
     
-    // Add metadata
     const metadata = {
       name: file.name,
       description: `File uploaded for disaster relief claim: ${file.name}`,
-      attributes: [
-        {
-          trait_type: "File Type",
-          value: file.type
-        },
-        {
-          trait_type: "File Size",
-          value: `${(file.size / 1024).toFixed(2)} KB`
-        }
-      ]
-    }
+    };
     
-    formData.append('pinataMetadata', JSON.stringify(metadata))
+    formData.append('pinataMetadata', JSON.stringify(metadata));
 
-    console.log('Debug - Uploading file to Pinata:', file.name)
-
-    // Upload file to Pinata
     const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
       method: 'POST',
       headers: {
         'pinata_api_key': apiKey,
-        'pinata_secret_api_key': secretKey
+        'pinata_secret_api_key': secretKey,
       },
-      body: formData
-    })
-
-    console.log('Debug - Pinata file upload response status:', response.status)
+      body: formData,
+    });
 
     if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`
-      try {
-        const errorData = await response.json()
-        console.log('Debug - File upload error response data:', errorData)
-        errorMessage = errorData.error || errorData.message || errorMessage
-      } catch (parseError) {
-        console.log('Debug - Could not parse file upload error response')
-      }
-      throw new Error(`Pinata file upload failed: ${errorMessage}`)
+      const errorData = await response.json();
+      throw new Error(`Pinata file upload failed: ${errorData.error || 'Unknown error'}`);
     }
 
-    const result = await response.json()
-    console.log('Successfully uploaded file to IPFS:', result)
-    
-    return result.IpfsHash // This is the CID
+    const result = await response.json();
+    return result.IpfsHash;
   } catch (error) {
-    console.error('Error uploading file to IPFS:', error)
-    if (error instanceof Error) {
-      throw new Error(`Failed to upload file to IPFS: ${error.message}`)
-    } else {
-      throw new Error(`Failed to upload file to IPFS: ${String(error)}`)
-    }
+    console.error('Error uploading file to IPFS:', error);
+    throw new Error(`Failed to upload file to IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-}
-
-export async function saveAadharToIPFS(aadharNumber: string, userId: string, disasterType?: string, location?: string): Promise<string> {
-  try {
-    // Create structured data for Aadhar
-    const aadharData: AadharIPFSData = {
-      aadharNumber,
-      userId,
-      timestamp: new Date().toISOString(),
-      claimType: "disaster_relief",
-      disasterType,
-      location
-    }
-
-    // Create metadata for the IPFS content
-    const metadata: IPFSMetadata = {
-      name: "Aadhar Verification Data",
-      description: "Aadhar number verification data for disaster relief claim",
-      attributes: [
-        {
-          trait_type: "Data Type",
-          value: "Aadhar Verification"
-        },
-        {
-          trait_type: "Claim Type",
-          value: "Disaster Relief"
-        },
-        {
-          trait_type: "Timestamp",
-          value: new Date().toISOString()
-        }
-      ]
-    }
-
-    // Upload to IPFS via Pinata
-    const cid = await uploadToPinata(aadharData, metadata)
-    console.log(`Aadhar number saved to IPFS with CID: ${cid}`)
-    
-    return cid
-  } catch (error) {
-    console.error('Error saving Aadhar to IPFS:', error)
-    throw new Error(`Failed to save Aadhar to IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  }
-}
-
-// Function to retrieve data from IPFS using CID
-export async function getDataFromIPFS(cid: string): Promise<any> {
-  try {
-    // You can use any IPFS gateway, here using Pinata's gateway
-    const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`)
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch data from IPFS: ${response.statusText}`)
-    }
-    
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('Error retrieving data from IPFS:', error)
-    throw new Error(`Failed to retrieve data from IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  }
+  */
 }
