@@ -13,6 +13,13 @@ const RELIEF_CONTRACT_ABI = [
     "type": "function"
   },
   {
+    "inputs": [{ "internalType": "address", "name": "victim", "type": "address" }],
+    "name": "addVerifiedVictim",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [{ "internalType": "uint256", "name": "id", "type": "uint256" }],
     "name": "getClaim",
     "outputs": [
@@ -108,6 +115,30 @@ export function useReliefContract() {
       }
     }
   }, [isConnected])
+
+  // Add a verified victim to the smart contract
+  const addVerifiedVictim = async (victimAddress: string) => {
+    if (!contract || !account) {
+      throw new Error('Contract not initialized or wallet not connected');
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const transaction = await contract.methods.addVerifiedVictim(victimAddress).send({
+        from: account,
+        gas: 100000, // Adjust gas limit as needed
+      });
+      return transaction;
+    } catch (err: any) {
+      console.error('Error adding verified victim:', err);
+      setError(err.message || 'Failed to add verified victim');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Submit a claim to the smart contract
   const submitClaim = async (requestedAmount: string, ipfsCid: string) => {
@@ -212,6 +243,7 @@ export function useReliefContract() {
 
   return {
     contract,
+    addVerifiedVictim,
     submitClaim,
     getUserClaims,
     isVerifiedVictim,

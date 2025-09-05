@@ -9,14 +9,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { Shield, Users, Settings, Database, TrendingUp } from "lucide-react"
+import { Shield, Users, Settings, Database, TrendingUp, CheckCircle } from "lucide-react"
 import { getAdminStats, getAllUsers, updateUserRole } from "@/lib/api";
 import { getUserProfile } from "@/services/userService";
 import { useAuth } from "@/contexts/AuthContext";
+import { useReliefContract } from "@/hooks/useReliefContract";
 import { toast } from "sonner"
 
 export function AdminDashboard() {
   const { user } = useAuth();
+  const { addVerifiedVictim, loading: contractLoading } = useReliefContract();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalClaims: 0,
@@ -26,6 +28,7 @@ export function AdminDashboard() {
   const [users, setUsers] = useState([])
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true)
+  const [victimAddress, setVictimAddress] = useState("");
 
   useEffect(() => {
     loadAdminData()
@@ -58,6 +61,27 @@ export function AdminDashboard() {
       toast.error(error.message)
     }
   }
+
+  const handleVerifyVictim = async () => {
+    if (!victimAddress) {
+      toast.error("Please enter a wallet address.");
+      return;
+    }
+    try {
+      toast.loading("Sending verification transaction...");
+      const tx = await addVerifiedVictim(victimAddress);
+      toast.dismiss();
+      toast.success("Wallet verified successfully!", {
+        description: `Transaction Hash: ${tx.transactionHash}`,
+      });
+      setVictimAddress(""); // Clear input on success
+    } catch (error: any) {
+      toast.dismiss();
+      toast.error("Verification failed", {
+        description: error.message || "An unknown error occurred.",
+      });
+    }
+  };
 
   const systemMetrics = [
     { name: "Users", value: stats.totalUsers, color: "#3B82F6" },
@@ -140,6 +164,7 @@ export function AdminDashboard() {
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList>
             <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="blockchainActions">Blockchain Actions</TabsTrigger>
             <TabsTrigger value="system">System Metrics</TabsTrigger>
             <TabsTrigger value="blockchain">Blockchain Status</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -195,6 +220,32 @@ export function AdminDashboard() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="blockchainActions">
+            <Card>
+              <CardHeader>
+                <CardTitle>Verify Victim Wallet</CardTitle>
+                <CardDescription>
+                  Add a wallet address to the smart contract's list of verified victims. This is a privileged action.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="victimAddress">Victim Wallet Address</Label>
+                  <Input 
+                    id="victimAddress" 
+                    placeholder="0x..." 
+                    value={victimAddress} 
+                    onChange={(e) => setVictimAddress(e.target.value)} 
+                  />
+                </div>
+                <Button onClick={handleVerifyVictim} disabled={contractLoading || !victimAddress}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  {contractLoading ? 'Verifying...' : 'Verify Wallet on Blockchain'}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>

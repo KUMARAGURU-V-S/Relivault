@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { MapPin, Upload, FileText, AlertCircle } from "lucide-react"
+import { MapPin, Upload, FileText, AlertCircle, CheckCircle } from "lucide-react"
 import { submitClaim, uploadToIPFS, saveAadharToIPFS, saveCIDToFirestore } from "@/lib/api"
 import { ClaimFormData, ClaimSubmissionData } from "@/lib/types"
 import { toast } from "sonner"
@@ -161,13 +161,8 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
     }
 
     // Check location (either captured or manually entered)
-    if (!location && !formData.location.trim()) {
+    if (!formData.location.trim()) {
       toast.error('Please capture your location or enter it manually')
-      return
-    }
-
-    if (!location) {
-      toast.error('Please capture your geo-location first')
       return
     }
 
@@ -556,11 +551,11 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || contractLoading || !aadhaarVerified || !location || !isConnected || isVerified === false}
+            disabled={loading || contractLoading || !aadhaarVerified || !formData.location.trim() || !isConnected || isVerified === false}
             title={
               !isConnected ? 'Please connect your MetaMask wallet' :
               isVerified === false ? 'Your wallet is not verified as a victim' :
-              !aadhaarVerified || !location ? 'Please verify Aadhaar and enable Geo-location to continue' :
+              !aadhaarVerified || !formData.location.trim() ? 'Please complete Aadhaar verification and provide your location to continue' :
               'Submit your claim to the blockchain'
             }
           >
@@ -568,19 +563,19 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
           </Button>
 
           {/* Validation Status */}
-          {(!aadhaarVerified || !location || !isConnected || isVerified === false) && (
+          {(!aadhaarVerified || !formData.location.trim() || !isConnected || isVerified === false) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <div className="flex items-center space-x-2 text-sm text-yellow-800">
                 <AlertCircle className="h-4 w-4" />
                 <span>
                   Please complete:
                   {!isConnected && " Connect MetaMask wallet"}
-                  {!isConnected && (!aadhaarVerified || !location || isVerified === false) && ","}
+                  {!isConnected && (!aadhaarVerified || !formData.location.trim() || isVerified === false) && ","}
                   {isVerified === false && " Get wallet verified as victim"}
-                  {isVerified === false && (!aadhaarVerified || !location) && ","}
+                  {isVerified === false && (!aadhaarVerified || !formData.location.trim()) && ","}
                   {!aadhaarVerified && " Aadhaar verification"}
-                  {!aadhaarVerified && !location && " and"}
-                  {!location && " Geo-location capture"}
+                  {!aadhaarVerified && !formData.location.trim() && " and"}
+                  {!formData.location.trim() && " Geo-location capture"}
                 </span>
               </div>
             </div>
