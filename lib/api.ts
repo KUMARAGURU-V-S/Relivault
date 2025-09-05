@@ -1,72 +1,102 @@
 // API functions for the disaster relief system
 import { db } from "../firebase.js"
-import { collection, addDoc, updateDoc, doc } from "firebase/firestore"
+import { collection, addDoc, updateDoc, doc, getDocs, query, where, getDoc, orderBy, limit, setDoc } from "firebase/firestore"
 import { ClaimSubmissionData, CIDData, ClaimResult } from "./types"
 
 
 export async function getUserRole(uid: string): Promise<string> {
-  // Mock implementation - instant response for better UX
-  const roles = ["victim", "donor", "ngo", "admin"]
-  return Promise.resolve(roles[Math.floor(Math.random() * roles.length)])
+  try {
+    const userDoc = doc(db, "users", uid)
+    const snapshot = await getDoc(userDoc)
+    
+    if (snapshot.exists()) {
+      const userData = snapshot.data()
+      return userData.role || "victim" // Default to victim if no role set
+    } else {
+      return "victim" // Default role for new users
+    }
+  } catch (error) {
+    console.error("Error fetching user role:", error)
+    return "victim" // Default fallback
+  }
 }
 
 export async function createUser(userData: any): Promise<void> {
-  // Mock implementation - instant user creation
-  console.log("Creating user:", userData)
-  return Promise.resolve()
+  try {
+    console.log("Creating user:", userData)
+    
+    const userDoc = doc(db, "users", userData.uid)
+    await setDoc(userDoc, {
+      ...userData,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })
+    
+    console.log("User created successfully")
+  } catch (error) {
+    console.error("Error creating user:", error)
+    throw new Error("Failed to create user")
+  }
 }
 
 export async function getUserClaims(uid: string): Promise<any[]> {
-  // Mock implementation
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          id: "1",
-          disasterType: "Flood",
-          location: "Kerala, India",
-          requestedAmount: 25000,
-          status: "approved",
-          amount: 25000,
-          createdAt: new Date().toISOString(),
-          transactionHash: "0x1234567890abcdef",
-          documents: ["doc1.pdf", "doc2.jpg"],
-        },
-        {
-          id: "2",
-          disasterType: "Earthquake",
-          location: "Gujarat, India",
-          requestedAmount: 50000,
-          status: "pending",
-          createdAt: new Date().toISOString(),
-          documents: ["doc3.pdf"],
-        },
-      ])
-    }, 500)
-  })
+  try {
+    const claimsRef = collection(db, "claims")
+    const q = query(claimsRef, where("userId", "==", uid))
+    const snapshot = await getDocs(q)
+    
+    const claims = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    
+    // Sort by createdAt on client side to avoid index requirement
+    return claims.sort((a, b) => {
+      const aDate = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date()
+      const bDate = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date()
+      return bDate.getTime() - aDate.getTime()
+    })
+  } catch (error) {
+    console.error("Error fetching user claims:", error)
+    return []
+  }
 }
 
 export async function getUserProfile(uid: string): Promise<any> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        name: "John Doe",
-        email: "john@example.com",
-        phone: "+91 9876543210",
-        aadhaar: "1234-5678-9012",
-        verified: true,
-      })
-    }, 500)
-  })
+  try {
+    const userDoc = doc(db, "users", uid)
+    const snapshot = await getDoc(userDoc)
+    
+    if (snapshot.exists()) {
+      return snapshot.data()
+    } else {
+      // Return null if user profile doesn't exist
+      return null
+    }
+  } catch (error) {
+    console.error("Error fetching user profile:", error)
+    return null
+  }
 }
 
 export async function submitClaim(claimData: ClaimSubmissionData): Promise<ClaimResult> {
-  console.log("Submitting claim:", claimData)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ claimId: `claim_${Date.now()}_${Math.random().toString(36).substring(2, 9)}` })
-    }, 2000)
-  })
+  try {
+    console.log("Submitting claim:", claimData)
+    
+    const claimsRef = collection(db, "claims")
+    const docRef = await addDoc(claimsRef, {
+      ...claimData,
+      status: "pending",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })
+    
+    console.log("Claim submitted successfully with ID:", docRef.id)
+    return { claimId: docRef.id }
+  } catch (error) {
+    console.error("Error submitting claim:", error)
+    throw new Error("Failed to submit claim")
+  }
 }
 
 export async function uploadToIPFS(file: File): Promise<string> {
@@ -138,82 +168,165 @@ export async function saveCIDToFirestore(cidData: CIDData): Promise<void> {
 }
 
 export async function getDonorStats(uid: string): Promise<any> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        totalDonated: 150000,
-        totalDonations: 12,
-        nftCount: 12,
-        impactScore: 95,
-      })
-    }, 500)
-  })
+  try {
+    const donationsRef = collection(db, "donations")
+    const q = query(donationsRef, where("donorId", "==", uid))
+    const snapshot = await getDocs(q)
+    
+    let totalDonated = 0
+    let totalDonations = snapshot.size
+    
+    snapshot.docs.forEach(doc => {
+      const data = doc.data()
+      totalDonated += data.amount || 0
+    })
+    
+    return {
+      totalDonated,
+      totalDonations,
+      nftCount: totalDonations, // Assuming 1 NFT per donation
+      impactScore: Math.min(95, Math.floor(totalDonated / 1000)), // Simple impact calculation
+    }
+  } catch (error) {
+    console.error("Error fetching donor stats:", error)
+    return {
+      totalDonated: 0,
+      totalDonations: 0,
+      nftCount: 0,
+      impactScore: 0,
+    }
+  }
 }
 
 export async function getDonorTransactions(uid: string): Promise<any[]> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          id: "1",
-          disasterType: "Kerala Floods 2024",
-          amount: 50000,
-          timestamp: new Date().toISOString(),
-          transactionHash: "0xabcdef1234567890",
-          nftTokenId: "123",
-        },
-        {
-          id: "2",
-          disasterType: "Gujarat Earthquake 2024",
-          amount: 75000,
-          timestamp: new Date().toISOString(),
-          transactionHash: "0x1234567890abcdef",
-          nftTokenId: "124",
-        },
-      ])
-    }, 500)
-  })
+  try {
+    const donationsRef = collection(db, "donations")
+    const q = query(donationsRef, where("donorId", "==", uid))
+    const snapshot = await getDocs(q)
+    
+    const transactions = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      timestamp: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+    }))
+    
+    // Sort by createdAt on client side
+    return transactions.sort((a, b) => {
+      const aDate = new Date(a.timestamp)
+      const bDate = new Date(b.timestamp)
+      return bDate.getTime() - aDate.getTime()
+    })
+  } catch (error) {
+    console.error("Error fetching donor transactions:", error)
+    return []
+  }
 }
 
 export async function getPublicStats(): Promise<any> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        totalDonations: 2500000,
-        totalDisbursed: 2350000,
-        totalVictims: 1250,
-        activeClaims: 45,
-        totalDonors: 890,
-      })
-    }, 500)
-  })
+  try {
+    // Get total donations
+    const donationsRef = collection(db, "donations")
+    const donationsSnapshot = await getDocs(donationsRef)
+    
+    let totalDonations = 0
+    const uniqueDonors = new Set()
+    
+    donationsSnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      totalDonations += data.amount || 0
+      if (data.donorId) uniqueDonors.add(data.donorId)
+    })
+    
+    // Get claims stats
+    const claimsRef = collection(db, "claims")
+    const claimsSnapshot = await getDocs(claimsRef)
+    
+    let totalDisbursed = 0
+    let activeClaims = 0
+    const uniqueVictims = new Set()
+    
+    claimsSnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      if (data.userId) uniqueVictims.add(data.userId)
+      
+      if (data.status === "approved" && data.amount) {
+        totalDisbursed += data.amount
+      }
+      
+      if (data.status === "pending" || data.status === "under_review") {
+        activeClaims++
+      }
+    })
+    
+    return {
+      totalDonations,
+      totalDisbursed,
+      totalVictims: uniqueVictims.size,
+      activeClaims,
+      totalDonors: uniqueDonors.size,
+    }
+  } catch (error) {
+    console.error("Error fetching public stats:", error)
+    return {
+      totalDonations: 0,
+      totalDisbursed: 0,
+      totalVictims: 0,
+      activeClaims: 0,
+      totalDonors: 0,
+    }
+  }
 }
 
 export async function getRecentTransactions(): Promise<any[]> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          id: "1",
-          type: "donation",
-          amount: 25000,
-          disasterType: "Kerala Floods",
-          location: "Kerala, India",
-          timestamp: new Date().toISOString(),
-          transactionHash: "0x1234567890abcdef",
-        },
-        {
-          id: "2",
+  try {
+    const transactions: any[] = []
+    
+    // Get recent donations (without orderBy to avoid index requirement)
+    const donationsRef = collection(db, "donations")
+    const donationsSnapshot = await getDocs(donationsRef)
+    
+    donationsSnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      transactions.push({
+        id: doc.id,
+        type: "donation",
+        amount: data.amount,
+        disasterType: data.disasterType,
+        location: data.location,
+        timestamp: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        transactionHash: data.transactionHash,
+      })
+    })
+    
+    // Get recent disbursements (approved claims)
+    const claimsRef = collection(db, "claims")
+    const claimsQuery = query(claimsRef, where("status", "==", "approved"))
+    const claimsSnapshot = await getDocs(claimsQuery)
+    
+    claimsSnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      if (data.amount) {
+        transactions.push({
+          id: doc.id,
           type: "disbursement",
-          amount: 30000,
-          disasterType: "Gujarat Earthquake",
-          location: "Gujarat, India",
-          timestamp: new Date().toISOString(),
-          transactionHash: "0xabcdef1234567890",
-        },
-      ])
-    }, 500)
-  })
+          amount: data.amount,
+          disasterType: data.disasterType,
+          location: data.location,
+          timestamp: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          transactionHash: data.transactionHash,
+        })
+      }
+    })
+    
+    // Sort by timestamp and return latest 10
+    return transactions
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 10)
+      
+  } catch (error) {
+    console.error("Error fetching recent transactions:", error)
+    return []
+  }
 }
 
 export async function getDisasterStats(): Promise<any[]> {
@@ -231,102 +344,155 @@ export async function getDisasterStats(): Promise<any[]> {
 }
 
 export async function getPendingClaims(): Promise<any[]> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          id: "1",
-          disasterType: "Flood",
-          userName: "Rajesh Kumar",
-          location: "Patna, Bihar",
-          requestedAmount: 35000,
-          description: "House damaged due to severe flooding, need immediate assistance for repairs",
-          createdAt: new Date().toISOString(),
-          documents: ["aadhaar.pdf", "damage_photo.jpg"],
-          coordinates: { lat: 25.5941, lng: 85.1376 },
-        },
-        {
-          id: "2",
-          disasterType: "Earthquake",
-          userName: "Priya Sharma",
-          location: "Bhuj, Gujarat",
-          requestedAmount: 75000,
-          description: "Complete house collapse, family of 5 needs shelter and basic necessities",
-          createdAt: new Date().toISOString(),
-          documents: ["aadhaar.pdf"],
-          coordinates: null,
-        },
-      ])
-    }, 500)
-  })
+  try {
+    const claimsRef = collection(db, "claims")
+    const q = query(claimsRef, where("status", "in", ["pending", "under_review"]))
+    const snapshot = await getDocs(q)
+    
+    const claims = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    
+    // Sort by createdAt on client side
+    return claims.sort((a, b) => {
+      const aDate = a.createdAt?.toDate?.() || new Date(a.createdAt) || new Date()
+      const bDate = b.createdAt?.toDate?.() || new Date(b.createdAt) || new Date()
+      return bDate.getTime() - aDate.getTime()
+    })
+  } catch (error) {
+    console.error("Error fetching pending claims:", error)
+    return []
+  }
 }
 
 export async function getNGOStats(uid: string): Promise<any> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        totalReviewed: 156,
-        approved: 134,
-        rejected: 22,
-        pending: 8,
-      })
-    }, 500)
-  })
+  try {
+    const claimsRef = collection(db, "claims")
+    const reviewedQuery = query(claimsRef, where("reviewerId", "==", uid))
+    const reviewedSnapshot = await getDocs(reviewedQuery)
+    
+    let approved = 0
+    let rejected = 0
+    let totalReviewed = reviewedSnapshot.size
+    
+    reviewedSnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      if (data.status === "approved") approved++
+      if (data.status === "rejected") rejected++
+    })
+    
+    // Get pending claims (not specific to this NGO)
+    const pendingQuery = query(claimsRef, where("status", "in", ["pending", "under_review"]))
+    const pendingSnapshot = await getDocs(pendingQuery)
+    
+    return {
+      totalReviewed,
+      approved,
+      rejected,
+      pending: pendingSnapshot.size,
+    }
+  } catch (error) {
+    console.error("Error fetching NGO stats:", error)
+    return {
+      totalReviewed: 0,
+      approved: 0,
+      rejected: 0,
+      pending: 0,
+    }
+  }
 }
 
 export async function reviewClaim(claimId: string, decision: string, notes: string, reviewerId: string): Promise<void> {
-  console.log("Reviewing claim:", { claimId, decision, notes, reviewerId })
-  // Instant claim review for better UX
-  return Promise.resolve()
+  try {
+    console.log("Reviewing claim:", { claimId, decision, notes, reviewerId })
+    
+    const claimDoc = doc(db, "claims", claimId)
+    await updateDoc(claimDoc, {
+      status: decision,
+      reviewNotes: notes,
+      reviewerId: reviewerId,
+      reviewedAt: new Date(),
+      updatedAt: new Date()
+    })
+    
+    console.log("Claim reviewed successfully")
+  } catch (error) {
+    console.error("Error reviewing claim:", error)
+    throw new Error("Failed to review claim")
+  }
 }
 
 export async function getAdminStats(): Promise<any> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        totalUsers: 2456,
-        totalClaims: 1234,
-        totalDonations: 2500000,
-        systemHealth: 99,
-      })
-    }, 500)
-  })
+  try {
+    // Get user count
+    const usersRef = collection(db, "users")
+    const usersSnapshot = await getDocs(usersRef)
+    const totalUsers = usersSnapshot.size
+    
+    // Get claims count
+    const claimsRef = collection(db, "claims")
+    const claimsSnapshot = await getDocs(claimsRef)
+    const totalClaims = claimsSnapshot.size
+    
+    // Get total donations amount
+    const donationsRef = collection(db, "donations")
+    const donationsSnapshot = await getDocs(donationsRef)
+    
+    let totalDonations = 0
+    donationsSnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      totalDonations += data.amount || 0
+    })
+    
+    return {
+      totalUsers,
+      totalClaims,
+      totalDonations,
+      systemHealth: 99, // This would be calculated based on actual system metrics
+    }
+  } catch (error) {
+    console.error("Error fetching admin stats:", error)
+    return {
+      totalUsers: 0,
+      totalClaims: 0,
+      totalDonations: 0,
+      systemHealth: 0,
+    }
+  }
 }
 
 export async function getAllUsers(): Promise<any[]> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          id: "1",
-          name: "John Doe",
-          email: "john@example.com",
-          role: "victim",
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "2",
-          name: "Jane Smith",
-          email: "jane@example.com",
-          role: "donor",
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "3",
-          name: "NGO Helper",
-          email: "ngo@example.com",
-          role: "ngo",
-          createdAt: new Date().toISOString(),
-        },
-      ])
-    }, 500)
-  })
+  try {
+    const usersRef = collection(db, "users")
+    const snapshot = await getDocs(usersRef)
+    
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+    }))
+  } catch (error) {
+    console.error("Error fetching all users:", error)
+    return []
+  }
 }
 
 export async function updateUserRole(userId: string, newRole: string): Promise<void> {
-  console.log("Updating user role:", { userId, newRole })
-  // Simulate instant role update - in production this would be a real API call
-  return Promise.resolve()
+  try {
+    console.log("Updating user role:", { userId, newRole })
+    
+    const userDoc = doc(db, "users", userId)
+    await updateDoc(userDoc, {
+      role: newRole,
+      updatedAt: new Date()
+    })
+    
+    console.log("User role updated successfully")
+  } catch (error) {
+    console.error("Error updating user role:", error)
+    throw new Error("Failed to update user role")
+  }
 }
 
 export async function getSystemHealth(): Promise<any> {

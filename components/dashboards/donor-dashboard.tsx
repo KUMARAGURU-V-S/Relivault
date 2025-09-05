@@ -9,8 +9,10 @@ import { DonationForm } from "@/components/forms/donation-form"
 import { NFTGallery } from "@/components/nft/nft-gallery"
 import { getDonorStats, getDonorTransactions } from "@/lib/api"
 import { NavigationArrows } from "@/components/NavigationArrows"
+import { useAuth } from "@/contexts/AuthContext"
 
 export function DonorDashboard() {
+  const { user } = useAuth()
   const [stats, setStats] = useState({
     totalDonated: 0,
     totalDonations: 0,
@@ -21,14 +23,17 @@ export function DonorDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Mock user ID for demo
-    const mockUserId = "demo-donor-123"
-    Promise.all([getDonorStats(mockUserId), getDonorTransactions(mockUserId)]).then(([statsData, transactionsData]) => {
-      setStats(statsData)
-      setTransactions(transactionsData)
+    // Use actual Firebase Auth UID
+    if (user?.uid) {
+      Promise.all([getDonorStats(user.uid), getDonorTransactions(user.uid)]).then(([statsData, transactionsData]) => {
+        setStats(statsData)
+        setTransactions(transactionsData)
+        setLoading(false)
+      })
+    } else {
       setLoading(false)
-    })
-  }, [])
+    }
+  }, [user])
 
   if (loading) {
     return <div className="p-6">Loading...</div>

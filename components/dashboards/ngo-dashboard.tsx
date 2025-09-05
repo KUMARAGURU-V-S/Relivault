@@ -10,8 +10,10 @@ import { FileText, CheckCircle, XCircle, Clock, Users, AlertTriangle } from "luc
 import { getPendingClaims, reviewClaim, getNGOStats } from "@/lib/api"
 import { toast } from "sonner"
 import { NavigationArrows } from "@/components/NavigationArrows"
+import { useAuth } from "@/contexts/AuthContext"
 
 export function NGODashboard() {
+  const { user } = useAuth()
   const [pendingClaims, setPendingClaims] = useState<any[]>([])
   const [stats, setStats] = useState({
     totalReviewed: 0,
@@ -24,13 +26,15 @@ export function NGODashboard() {
   const [selectedClaim, setSelectedClaim] = useState<any>(null)
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (user?.uid) {
+      loadData()
+    }
+  }, [user])
 
   const loadData = async () => {
     try {
-      const mockUserId = "demo-ngo-123"
-      const [claimsData, statsData] = await Promise.all([getPendingClaims(), getNGOStats(mockUserId)])
+      if (!user?.uid) return
+      const [claimsData, statsData] = await Promise.all([getPendingClaims(), getNGOStats(user.uid)])
       setPendingClaims(claimsData)
       setStats(statsData)
     } catch (error) {
@@ -42,7 +46,8 @@ export function NGODashboard() {
 
   const handleReview = async (claimId: string, decision: "approved" | "rejected") => {
     try {
-      await reviewClaim(claimId, decision, reviewNotes, "demo-ngo-123")
+      if (!user?.uid) return
+      await reviewClaim(claimId, decision, reviewNotes, user.uid)
       toast.success(`Claim ${decision} successfully`)
       setReviewNotes("")
       setSelectedClaim(null)

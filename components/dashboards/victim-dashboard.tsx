@@ -9,21 +9,38 @@ import { FileText, MapPin, Clock, CheckCircle, AlertCircle, DollarSign } from "l
 import { ClaimForm } from "@/components/forms/claim-form"
 import { getUserClaims, getUserProfile } from "@/lib/api"
 import { NavigationArrows } from "@/components/NavigationArrows"
+import { useAuth } from "@/contexts/AuthContext"
+import { toast } from "sonner"
 
 export function VictimDashboard() {
+  const { user } = useAuth()
   const [claims, setClaims] = useState<any[]>([])
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState("claims")
+
+  const loadData = async () => {
+    if (user?.uid) {
+      try {
+        const [claimsData, profileData] = await Promise.all([
+          getUserClaims(user.uid), 
+          getUserProfile(user.uid)
+        ])
+        setClaims(claimsData)
+        setProfile(profileData)
+        setLoading(false)
+      } catch (error) {
+        console.error("Error loading data:", error)
+        setLoading(false)
+      }
+    } else {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    // Mock user ID for demo
-    const mockUserId = "demo-victim-123"
-    Promise.all([getUserClaims(mockUserId), getUserProfile(mockUserId)]).then(([claimsData, profileData]) => {
-      setClaims(claimsData)
-      setProfile(profileData)
-      setLoading(false)
-    })
-  }, [])
+    loadData()
+  }, [user])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -103,7 +120,7 @@ export function VictimDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="claims" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="claims">My Claims</TabsTrigger>
             <TabsTrigger value="new-claim">New Claim</TabsTrigger>
@@ -121,7 +138,12 @@ export function VictimDashboard() {
                   <div className="text-center py-8">
                     <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">No claims submitted yet</p>
-                    <Button className="mt-4">Submit Your First Claim</Button>
+                    <Button 
+                      className="mt-4" 
+                      onClick={() => setActiveTab("new-claim")}
+                    >
+                      Submit Your First Claim
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -188,7 +210,11 @@ export function VictimDashboard() {
           </TabsContent>
 
           <TabsContent value="new-claim">
-            <ClaimForm onSuccess={() => window.location.reload()} />
+            <ClaimForm onSuccess={() => {
+              loadData() // Refresh the data
+              setActiveTab("claims") // Switch back to claims tab
+              toast.success("Claim submitted successfully!")
+            }} />
           </TabsContent>
 
           <TabsContent value="profile">

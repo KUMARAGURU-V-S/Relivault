@@ -17,12 +17,14 @@ import { MapPin, Upload, FileText, AlertCircle } from "lucide-react"
 import { submitClaim, uploadToIPFS, saveAadharToIPFS, saveCIDToFirestore } from "@/lib/api"
 import { ClaimFormData, ClaimSubmissionData } from "@/lib/types"
 import { toast } from "sonner"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface ClaimFormProps {
   onSuccess: () => void
 }
 
 export function ClaimForm({ onSuccess }: ClaimFormProps) {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [aadhaarVerified, setAadhaarVerified] = useState(false)
@@ -47,17 +49,17 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
       toast.error('Please enter a valid 12-digit Aadhaar number')
       return
     }
-    
+
     setIsVerifying(true)
-    
+
     try {
       // Simulate verification process
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       setAadhaarVerified(true)
       setShowSuccessPopup(true)
       toast.success("Aadhaar verified successfully!")
-      
+
       // Hide popup after 3 seconds
       setTimeout(() => setShowSuccessPopup(false), 3000)
     } catch (error) {
@@ -68,22 +70,48 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
   }
 
   const getLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords
-          setLocation({ lat: latitude, lng: longitude })
-          setFormData((prev) => ({
-            ...prev,
-            location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-          }))
-          toast.success("Location captured successfully")
-        },
-        () => {
-          toast.error("Failed to get location. Please enter manually.")
-        },
-      )
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by this browser. Please enter location manually.")
+      return
     }
+
+    toast.loading("Getting your location...")
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords
+        setLocation({ lat: latitude, lng: longitude })
+        setFormData((prev) => ({
+          ...prev,
+          location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+        }))
+        toast.dismiss()
+        toast.success("Location captured successfully")
+      },
+      (error) => {
+        toast.dismiss()
+        let errorMessage = "Failed to get location. Please enter manually."
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied. Please allow location access and try again, or enter manually."
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable. Please enter manually."
+            break
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out. Please try again or enter manually."
+            break
+        }
+        
+        toast.error(errorMessage)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    )
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,18 +125,36 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
+    // Check if user is authenticated
+    if (!user?.uid) {
+      toast.error('Please sign in to submit a claim')
+      return
+    }
+
+    // Validate required fields
+    if (!formData.disasterType || !formData.description || !formData.requestedAmount) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
     // Check if both Aadhaar verification and geo-location are completed
     if (!aadhaarVerified) {
       toast.error('Please verify your Aadhaar number first')
       return
     }
-    
+
+    // Check location (either captured or manually entered)
+    if (!location && !formData.location.trim()) {
+      toast.error('Please capture your location or enter it manually')
+      return
+    }
+
     if (!location) {
       toast.error('Please capture your geo-location first')
       return
     }
-    
+
     setLoading(true)
 
     try {
@@ -116,21 +162,21 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
       let aadharCID = null
       if (formData.aadharNumber.trim()) {
         aadharCID = await saveAadharToIPFS(
-          formData.aadharNumber, 
-          "demo-victim-123", // 🔹 replace with Firebase auth UID later
+          formData.aadharNumber,
+          user.uid, // ✅ Using actual Firebase Auth UID
           formData.disasterType,
           formData.location
         )
-        
+
         // 2. Save Aadhar CID to Firestore in separate collection
         await saveCIDToFirestore({
           type: "aadhar",
-          userId: "demo-victim-123", // 🔹 replace with Firebase auth UID later
+          userId: user.uid, // ✅ Using actual Firebase Auth UID
           cid: aadharCID,
           timestamp: new Date().toISOString(),
           claimId: null // Will be updated after claim submission
         })
-        
+
         toast.success("Aadhar number saved to IPFS successfully")
       }
 
@@ -143,7 +189,7 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
 
       // 4. Submit claim
       const claimData: ClaimSubmissionData = {
-        userId: "demo-victim-123", // 🔹 replace with Firebase auth UID later
+        userId: user.uid, // ✅ Using actual Firebase Auth UID
         disasterType: formData.disasterType,
         description: formData.description,
         requestedAmount: Number.parseFloat(formData.requestedAmount),
@@ -153,14 +199,14 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
         aadharCID,
         status: "pending",
       }
-      
+
       const claimResult = await submitClaim(claimData)
 
       // 5. Update the Aadhar CID record with claim ID if available
       if (aadharCID && claimResult?.claimId) {
         await saveCIDToFirestore({
           type: "aadhar",
-          userId: "demo-victim-123",
+          userId: user.uid, // ✅ Using actual Firebase Auth UID
           cid: aadharCID,
           timestamp: new Date().toISOString(),
           claimId: claimResult.claimId
@@ -378,26 +424,26 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
           </div>
 
           {/* Submit */}
-          <Button 
-            type="submit" 
-            className="w-full" 
+          <Button
+            type="submit"
+            className="w-full"
             disabled={loading || !aadhaarVerified || !location}
             title={
-              !aadhaarVerified || !location 
+              !aadhaarVerified || !location
                 ? 'Please verify Aadhaar and enable Geo-location to continue'
                 : 'Submit your claim'
             }
           >
             {loading ? "Submitting Claim..." : "Submit Relief Claim"}
           </Button>
-          
+
           {/* Validation Status */}
           {(!aadhaarVerified || !location) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <div className="flex items-center space-x-2 text-sm text-yellow-800">
                 <AlertCircle className="h-4 w-4" />
                 <span>
-                  Please complete: 
+                  Please complete:
                   {!aadhaarVerified && " Aadhaar verification"}
                   {!aadhaarVerified && !location && " and"}
                   {!location && " Geo-location capture"}
@@ -407,7 +453,7 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
           )}
         </form>
       </CardContent>
-      
+
       {/* Aadhaar Verification Success Popup */}
       {showSuccessPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
