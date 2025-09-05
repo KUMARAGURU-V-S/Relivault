@@ -28,8 +28,6 @@ contract EfficientDisasterRelief is ERC721URIStorage, Ownable, ReentrancyGuard {
     event ClaimRejected(uint256 indexed claimId);
     event FundsDisbursed(uint256 indexed claimId, address indexed to, uint256 amount);
 
-    // --- FIX #1: Update the constructor ---
-    // The constructor now accepts an `initialOwner` address and passes it to the Ownable contract.
     constructor(address initialOwner)
         ERC721("Relief Donor", "RDN")
         Ownable(initialOwner)
@@ -98,8 +96,4 @@ contract EfficientDisasterRelief is ERC721URIStorage, Ownable, ReentrancyGuard {
     function contractBalance() external view returns(uint256) {
         return address(this).balance;
     }
-
-    // --- FIX #2: Remove unnecessary overrides ---
-    // The required override section from the previous version is no longer needed
-    // because the new library handles these functions correctly by default.
 }

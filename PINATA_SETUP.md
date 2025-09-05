@@ -16,8 +16,8 @@ Create a `.env.local` file in your project root with:
 
 ```bash
 # Pinata IPFS Configuration
-PINATA_API_KEY=your_pinata_api_key_here
-PINATA_SECRET_API_KEY=your_pinata_secret_api_key_here
+NEXT_PUBLIC_PINATA_API_KEY=your_pinata_api_key_here
+NEXT_PUBLIC_PINATA_SECRET_API_KEY=your_pinata_secret_api_key_here
 ```
 
 ## Step 3: Restart Your Development Server
@@ -32,16 +32,16 @@ yarn dev
 
 ## How It Works
 
-The system now uses a **server-side API route** (`/api/ipfs`) to handle IPFS uploads:
+The system now uses **client-side IPFS uploads** directly to Pinata:
 
-1. **Client-side**: Form submits data to the API route
-2. **Server-side**: API route accesses environment variables and uploads to Pinata
-3. **Response**: Returns the real IPFS CID to the client
+1. **Client-side**: Form directly calls IPFS functions
+2. **Direct upload**: Functions upload to Pinata using environment variables
+3. **Response**: Returns the real IPFS CID directly
 
 This approach ensures:
-- ✅ Environment variables are accessible (server-side)
-- ✅ API keys remain secure
-- ✅ Real IPFS uploads work properly
+- ✅ Direct IPFS uploads without API route overhead
+- ✅ Real-time upload progress
+- ✅ Immediate CID response
 
 ## What Gets Uploaded to IPFS
 
@@ -85,6 +85,6 @@ After setup:
 ## Security Notes
 
 - Never commit `.env.local` to version control
-- API keys are now server-side only (no NEXT_PUBLIC_ prefix)
+- API keys are exposed to the client (NEXT_PUBLIC_ prefix)
 - For production, consider using a backend API to handle IPFS uploads
 - Pinata API keys should be kept secure and not shared publicly

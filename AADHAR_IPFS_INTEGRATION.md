@@ -80,8 +80,8 @@ Supporting documents are also **actually uploaded** to IPFS with metadata includ
 You need to set up these environment variables in `.env.local`:
 
 ```bash
-PINATA_API_KEY=your_pinata_api_key
-PINATA_SECRET_API_KEY=your_pinata_secret_key
+NEXT_PUBLIC_PINATA_API_KEY=your_pinata_api_key
+NEXT_PUBLIC_PINATA_SECRET_API_KEY=your_pinata_secret_key
 ```
 
 ### Pinata Account
