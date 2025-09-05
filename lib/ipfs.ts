@@ -46,54 +46,54 @@ export async function saveAadharToIPFS(aadharNumber: string, userId: string, dis
 }
 
 /**
- * NOTE: Direct file upload to IPFS from the client is insecure.
- * This function needs to be refactored to send the file to our backend for secure processing.
- * For now, this functionality is disabled in the claim form.
+ * Securely uploads a file to IPFS by sending it to our own backend API.
+ * The backend then communicates with Pinata.
+ * @param file The file to upload.
+ * @returns The IPFS CID (Content Identifier) of the uploaded file.
  */
 export async function uploadFileToPinata(file: File): Promise<string> {
-  console.error("INSECURE FUNCTION CALLED: uploadFileToPinata. This needs to be refactored.");
-  throw new Error("Direct file upload is disabled for security reasons. Please implement a backend route for file uploads.");
-  
-  // The original insecure code is left here for reference during refactoring,
-  // but it will not be executed.
-  /*
   try {
-    const apiKey = process.env.NEXT_PUBLIC_PINATA_API_KEY;
-    const secretKey = process.env.NEXT_PUBLIC_PINATA_SECRET_API_KEY;
-    
-    if (!apiKey || !secretKey) {
-      throw new Error('Pinata API keys are not configured for client-side upload.');
-    }
-
     const formData = new FormData();
     formData.append('file', file);
-    
+
+    // Optional: Add metadata if needed. The backend will parse this.
     const metadata = {
       name: file.name,
       description: `File uploaded for disaster relief claim: ${file.name}`,
+      attributes: [
+        {
+          trait_type: "File Type",
+          value: file.type
+        },
+        {
+          trait_type: "File Size",
+          value: `${(file.size / 1024).toFixed(2)} KB`
+        }
+      ]
     };
-    
-    formData.append('pinataMetadata', JSON.stringify(metadata));
+    formData.append('metadata', JSON.stringify(metadata));
 
-    const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+    // This fetch call goes to our OWN backend API route (/api/ipfs)
+    const response = await fetch('/api/ipfs', {
       method: 'POST',
-      headers: {
-        'pinata_api_key': apiKey,
-        'pinata_secret_api_key': secretKey,
-      },
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Pinata file upload failed: ${errorData.error || 'Unknown error'}`);
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Failed to upload file to IPFS via the backend.');
     }
 
-    const result = await response.json();
-    return result.IpfsHash;
+    console.log(`File securely uploaded to IPFS with CID: ${result.cid}`);
+    return result.cid;
+
   } catch (error) {
     console.error('Error uploading file to IPFS:', error);
-    throw new Error(`Failed to upload file to IPFS: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof Error) {
+      throw new Error(`Failed to upload file to IPFS: ${error.message}`);
+    } else {
+      throw new Error(`Failed to upload file to IPFS: ${String(error)}`);
+    }
   }
-  */
 }
