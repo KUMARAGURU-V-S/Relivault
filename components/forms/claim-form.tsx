@@ -231,7 +231,7 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
         toast.success("Claim submitted to blockchain successfully!")
         
         // Store transaction hash for reference
-        const transactionHash = contractTx.transactionHash
+        const transactionHash = contractTx.hash
         
         // 6. Also submit to traditional database for backup/indexing
         const claimData: ClaimSubmissionData = {
