@@ -86,6 +86,10 @@ async function main() {
   );
   
   console.log("💾 Deployment info saved to deployment-info.json");
+
+  // Save contract address to .env file for backend scripts
+  fs.writeFileSync('.env', `CONTRACT_ADDRESS=${contractAddress}`);
+  console.log("🔑 Contract address saved to .env file");
 }
 
 main()

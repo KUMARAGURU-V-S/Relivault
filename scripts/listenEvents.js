@@ -4,22 +4,22 @@ require("dotenv").config();
 
 async function main() {
   const contractAddress = process.env.CONTRACT_ADDRESS; 
-  const contractABI = require("../artifacts/contracts/ReliefFund.sol/ReliefFund.json").abi;
+  const contractABI = require("../artifacts/contracts/simplified_smart_contract.sol/EfficientDisasterRelief.json").abi;
 
   const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545"); // Hardhat/Localhost
   const contract = new ethers.Contract(contractAddress, contractABI, provider);
 
   console.log("Listening for contract events...");
 
-  // Example: DonationReceived event
-  contract.on("DonationReceived", (donor, amount, event) => {
-    console.log(`💰 Donation from ${donor} of amount: ${ethers.formatEther(amount)} ETH`);
+  // Listen for Donation events
+  contract.on("Donation", (donor, amount, tokenId, event) => {
+    console.log(`💰 Donation from ${donor} of amount: ${ethers.formatEther(amount)} ETH. TokenID: ${tokenId}`);
     // TODO: Save this to DB / Firebase
   });
 
-  // Example: ClaimSubmitted event
-  contract.on("ClaimSubmitted", (claimId, victim, docsCID, event) => {
-    console.log(`📄 Claim #${claimId} submitted by ${victim}, docs: ${docsCID}`);
+  // Listen for ClaimSubmitted events
+  contract.on("ClaimSubmitted", (claimId, claimant, event) => {
+    console.log(`📄 Claim #${claimId} submitted by ${claimant}`);
     // TODO: Save this to DB / Firebase
   });
 }

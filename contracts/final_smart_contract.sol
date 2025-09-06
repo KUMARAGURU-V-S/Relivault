@@ -416,9 +416,9 @@ contract EfficientDisasterRelief is ERC721URIStorage, Ownable, ReentrancyGuard {
         if (requested == 0) revert InvalidAmount();
         
         // Early validation to fail fast and save gas
-        if (!verifiedVictims[msg.sender]) {
-            revert UnverifiedVictimAddress(msg.sender);
-        }
+        // if (!verifiedVictims[msg.sender]) {
+        //     revert UnverifiedVictimAddress(msg.sender);
+        // }
         
         // Validate IPFS CID format
         if (!_validateIPFSCID(docsIpfs)) {
