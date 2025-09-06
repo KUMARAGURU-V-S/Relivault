@@ -89,6 +89,37 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     }
   }
 
+  // Switch to Hardhat localhost network
+  const switchToLocalhostNetwork = async () => {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x7a69' }], // 31337 in hex
+      });
+    } catch (switchError: any) {
+      // Chain not added to MetaMask
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId: '0x7a69',
+                chainName: 'Hardhat Localhost',
+                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                rpcUrls: ['http://127.0.0.1:8545'],
+              },
+            ],
+          });
+        } catch (addError) {
+          throw new Error('Failed to add Hardhat Localhost network to MetaMask.');
+        }
+      } else {
+        throw switchError;
+      }
+    }
+  };
+
   // Connect to MetaMask
   const connectWallet = async () => {
     if (!isMetaMaskInstalled()) {
@@ -114,16 +145,16 @@ export function Web3Provider({ children }: Web3ProviderProps) {
         })
         const currentChainId = parseInt(chainId, 16)
         
-        // If not on Polygon Amoy or localhost, switch to Amoy
-        if (currentChainId !== 80002 && currentChainId !== 31337) {
-          await switchToAmoyNetwork()
+        // If not on localhost, switch to it for local development.
+        if (currentChainId !== 31337) {
+          await switchToLocalhostNetwork();
           // Get the chain ID again after switching
           const newChainId = await window.ethereum.request({
             method: 'eth_chainId'
-          })
-          setChainId(parseInt(newChainId, 16))
+          });
+          setChainId(parseInt(newChainId, 16));
         } else {
-          setChainId(currentChainId)
+          setChainId(currentChainId);
         }
         
         setAccount(account)
