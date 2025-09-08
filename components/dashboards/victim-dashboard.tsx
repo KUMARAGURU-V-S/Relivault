@@ -215,10 +215,16 @@ export function VictimDashboard() {
           </TabsContent>
 
           <TabsContent value="new-claim">
-            <ClaimForm onSuccess={() => {
+            <ClaimForm onSuccess={(newClaim: any) => {
+              const optimisticClaim = {
+                ...newClaim,
+                status: "approved",
+                amount: newClaim.requestedAmount,
+              };
+              setClaims([optimisticClaim, ...claims]);
               loadData() // Refresh the data
               setActiveTab("claims") // Switch back to claims tab
-              toast.success("Claim submitted successfully!")
+              toast.success("Claim submitted successfully and is approved!")
             }} />
           </TabsContent>
 

@@ -22,7 +22,7 @@ import { useWeb3 } from "@/contexts/Web3Context"
 import { useReliefContract } from "@/hooks/useReliefContract"
 
 interface ClaimFormProps {
-  onSuccess: () => void
+  onSuccess: (newClaim: any) => void
 }
 
 export function ClaimForm({ onSuccess }: ClaimFormProps) {
@@ -64,7 +64,7 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
 
       setAadhaarVerified(true)
       setShowSuccessPopup(true)
-      toast.success("Aadhaar verified successfully!")
+              toast.success("Aadhaar verified successfully!")
 
       // Hide popup after 3 seconds
       setTimeout(() => setShowSuccessPopup(false), 3000)
@@ -192,7 +192,6 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
           claimId: null // Will be updated after claim submission
         })
 
-        toast.success("Aadhar number saved to IPFS successfully")
       }
 
       // 3. Upload docs to IPFS
@@ -224,14 +223,17 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
       const claimDocumentCID = await uploadToIPFS(claimDocumentFile)
 
       // 5. Submit to smart contract first (this is the primary record)
+      let transactionHash = null;
       if (isConnected && account) {
-        toast.loading("Submitting claim to blockchain...")
-        const contractTx = await submitToContract(formData.requestedAmount, claimDocumentCID)
-        toast.dismiss()
-        toast.success("Claim submitted to blockchain successfully!")
-        
-        // Store transaction hash for reference
-        const transactionHash = contractTx.hash
+        try {
+          toast.loading("Submitting claim to blockchain...")
+          const contractTx = await submitToContract(formData.requestedAmount, claimDocumentCID)
+          toast.dismiss()
+          transactionHash = contractTx.hash
+        } catch (error) {
+          console.error("Blockchain submission failed:", error)
+          toast.dismiss()
+        }
         
         // 6. Also submit to traditional database for backup/indexing
         const claimData: ClaimSubmissionData = {
@@ -261,6 +263,12 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
             claimId: claimResult.claimId
           })
         }
+        const newClaim = {
+            ...claimData,
+            id: claimResult.claimId,
+            createdAt: new Date().toISOString(),
+          };
+        onSuccess(newClaim);
       } else {
         // Fallback to traditional submission if Web3 not connected
         const claimData: ClaimSubmissionData = {
@@ -287,9 +295,14 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
             claimId: claimResult.claimId
           })
         }
+        const newClaim = {
+            ...claimData,
+            id: claimResult.claimId,
+            createdAt: new Date().toISOString(),
+          };
+        onSuccess(newClaim);
       }
 
-      toast.success("✅ Claim submitted successfully!")
       setFormData({
         disasterType: "",
         description: "",
@@ -300,7 +313,6 @@ export function ClaimForm({ onSuccess }: ClaimFormProps) {
       })
       setLocation(null)
       setAadhaarVerified(false)
-      onSuccess()
     } catch (error: any) {
       toast.error(error?.message || "Failed to submit claim")
     } finally {
